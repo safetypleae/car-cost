@@ -42,6 +42,18 @@
       "namedRegex": "^/_not\\-found(?:/)?$"
     },
     {
+      "page": "/api/fuel",
+      "regex": "^/api/fuel(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/fuel(?:/)?$"
+    },
+    {
+      "page": "/api/places",
+      "regex": "^/api/places(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/places(?:/)?$"
+    },
+    {
       "page": "/api/route",
       "regex": "^/api/route(?:/)?$",
       "routeKeys": {},

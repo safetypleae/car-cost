@@ -23,6 +23,14 @@ type RouteResult = {
   tollFee: number;
 };
 
+type TripRouteResult = {
+  outbound: RouteResult;
+  returnRoute: RouteResult | null;
+  totalDistanceKm: number;
+  totalDurationMinutes: number;
+  totalTollFee: number;
+};
+
 type FuelResult = {
   fuel: FuelType;
   source: string;
@@ -30,6 +38,11 @@ type FuelResult = {
   stationCount: number;
   averagePrice: number;
   lowest: {
+    name: string;
+    price: number;
+    distance: number;
+  };
+  nearest?: {
     name: string;
     price: number;
     distance: number;
@@ -51,9 +64,15 @@ const formatWon = (value: number) =>
     maximumFractionDigits: 0,
   }).format(Math.round(value));
 
+const formatDistance = (value: number) =>
+  value.toLocaleString("ko-KR", {
+    maximumFractionDigits: 1,
+  });
+
 const formatDuration = (minutes: number) => {
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
+  const roundedMinutes = Math.round(minutes);
+  const hours = Math.floor(roundedMinutes / 60);
+  const remainingMinutes = roundedMinutes % 60;
 
   if (hours === 0) {
     return `${remainingMinutes}분`;
@@ -79,13 +98,15 @@ export default function Home() {
   const [fuelInfo, setFuelInfo] =
     useState<FuelResult | null>(null);
 
+  const [fuelAutoError, setFuelAutoError] = useState("");
+
   const [passengers, setPassengers] = useState(1);
 
   const [tripType, setTripType] =
     useState<TripType>("oneway");
 
   const [route, setRoute] =
-    useState<RouteResult | null>(null);
+    useState<TripRouteResult | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -98,6 +119,7 @@ export default function Home() {
   const resetFuel = () => {
     setFuelInfo(null);
     setFuelPrice("");
+    setFuelAutoError("");
     resetResult();
   };
 
@@ -117,36 +139,21 @@ export default function Home() {
       return null;
     }
 
-    const multiplier =
-      tripType === "roundtrip" ? 2 : 1;
-
-    const totalDistance =
-      route.distanceKm * multiplier;
-
-    const totalDuration =
-      route.durationMinutes * multiplier;
-
     const fuelUsed =
-      totalDistance / fuelEfficiency;
+      route.totalDistanceKm / fuelEfficiency;
 
     const fuelCost =
       fuelUsed * pricePerLiter;
 
-    const totalToll =
-      route.tollFee * multiplier;
-
     const totalCost =
-      fuelCost + totalToll;
+      fuelCost + route.totalTollFee;
 
     const costPerPerson =
       totalCost / passengers;
 
     return {
-      totalDistance,
-      totalDuration,
       fuelUsed,
       fuelCost,
-      totalToll,
       totalCost,
       costPerPerson,
     };
@@ -155,8 +162,63 @@ export default function Home() {
     efficiency,
     fuelPrice,
     passengers,
-    tripType,
   ]);
+
+  const fetchRoute = async (
+    from: Place,
+    to: Place
+  ): Promise<RouteResult> => {
+    const params = new URLSearchParams({
+      origin: from.roadAddress || from.address,
+      destination: to.roadAddress || to.address,
+    });
+
+    const response = await fetch(
+      `/api/route?${params.toString()}`
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.error ||
+          `${from.name} → ${to.name} 경로를 조회하지 못했습니다.`
+      );
+    }
+
+    return {
+      distanceKm: Number(data.distanceKm),
+      durationMinutes: Number(data.durationMinutes),
+      tollFee: Number(data.tollFee),
+    };
+  };
+
+  const fetchFuelPrice = async () => {
+    if (!origin) {
+      return null;
+    }
+
+    const params = new URLSearchParams({
+      lng: String(origin.lng),
+      lat: String(origin.lat),
+      fuel: fuelType,
+    });
+
+    const response = await fetch(
+      `/api/fuel?${params.toString()}`
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.error ||
+          "출발지 주변 유가를 조회하지 못했습니다."
+      );
+    }
+
+    return data as FuelResult;
+  };
 
   const handleCalculate = async () => {
     if (!origin || !destination) {
@@ -164,8 +226,32 @@ export default function Home() {
       return;
     }
 
-    if (Number(efficiency) <= 0) {
-      setError("차량 연비를 입력해주세요.");
+    const fuelEfficiency = Number(efficiency);
+
+    if (
+      !Number.isFinite(fuelEfficiency) ||
+      fuelEfficiency <= 0
+    ) {
+      setError("올바른 차량 연비를 입력해주세요.");
+      return;
+    }
+
+    if (passengers < 1) {
+      setError("탑승 인원은 1명 이상이어야 합니다.");
+      return;
+    }
+
+    /*
+     * 자동 유가 조회에 실패한 상태에서는
+     * 사용자가 직접 가격을 입력해야 계산 가능
+     */
+    if (
+      fuelAutoError &&
+      Number(fuelPrice) <= 0
+    ) {
+      setError(
+        "유가 자동조회에 실패했습니다. 현재 유가를 직접 입력해주세요."
+      );
       return;
     }
 
@@ -175,75 +261,93 @@ export default function Home() {
 
     try {
       /*
-       * 1. Opinet 유가 조회
+       * 1. 유가
+       *
+       * 기존에 자동조회했거나 사용자가 직접 수정한
+       * 유가가 있으면 Opinet을 다시 호출하지 않는다.
        */
-      let priceToUse = Number(fuelPrice);
-      let nextFuelInfo = fuelInfo;
+      if (Number(fuelPrice) <= 0) {
+        try {
+          const nextFuelInfo =
+            await fetchFuelPrice();
 
-      if (!priceToUse || !fuelInfo) {
-        const fuelParams = new URLSearchParams({
-          lng: String(origin.lng),
-          lat: String(origin.lat),
-          fuel: fuelType,
-        });
+          if (nextFuelInfo) {
+            setFuelInfo(nextFuelInfo);
+            setFuelPrice(
+              String(nextFuelInfo.averagePrice)
+            );
+            setFuelAutoError("");
+          }
+        } catch (fuelError) {
+          /*
+           * Opinet 오류 때문에 경로 계산까지
+           * 막지 않는다.
+           */
+          setFuelInfo(null);
 
-        const fuelResponse = await fetch(
-          `/api/fuel?${fuelParams.toString()}`
-        );
-
-        const fuelData = await fuelResponse.json();
-
-        if (!fuelResponse.ok) {
-          throw new Error(
-            fuelData.error ||
-              "출발지 주변 유가를 조회하지 못했습니다."
+          setFuelAutoError(
+            fuelError instanceof Error
+              ? fuelError.message
+              : "유가 자동조회에 실패했습니다."
           );
         }
-
-        nextFuelInfo = fuelData as FuelResult;
-        priceToUse = nextFuelInfo.averagePrice;
-
-        setFuelInfo(nextFuelInfo);
-        setFuelPrice(String(priceToUse));
       }
 
       /*
-       * 2. NAVER 경로 조회
+       * 2. 실제 경로 조회
+       *
+       * 편도:
+       * 출발 → 목적지
+       *
+       * 왕복:
+       * 출발 → 목적지
+       * 목적지 → 출발
+       *
+       * 왕복을 단순 ×2 하지 않는다.
        */
-      const routeParams = new URLSearchParams({
-        origin:
-          origin.roadAddress || origin.address,
+      let outbound: RouteResult;
+      let returnRoute: RouteResult | null = null;
 
-        destination:
-          destination.roadAddress ||
-          destination.address,
-      });
+      if (tripType === "roundtrip") {
+        const [outboundResult, returnResult] =
+          await Promise.all([
+            fetchRoute(origin, destination),
+            fetchRoute(destination, origin),
+          ]);
 
-      const routeResponse = await fetch(
-        `/api/route?${routeParams.toString()}`
-      );
-
-      const routeData =
-        await routeResponse.json();
-
-      if (!routeResponse.ok) {
-        throw new Error(
-          routeData.error ||
-            "경로를 계산하지 못했습니다."
+        outbound = outboundResult;
+        returnRoute = returnResult;
+      } else {
+        outbound = await fetchRoute(
+          origin,
+          destination
         );
       }
 
+      const totalDistanceKm =
+        outbound.distanceKm +
+        (returnRoute?.distanceKm ?? 0);
+
+      const totalDurationMinutes =
+        outbound.durationMinutes +
+        (returnRoute?.durationMinutes ?? 0);
+
+      const totalTollFee =
+        outbound.tollFee +
+        (returnRoute?.tollFee ?? 0);
+
       setRoute({
-        distanceKm: routeData.distanceKm,
-        durationMinutes:
-          routeData.durationMinutes,
-        tollFee: routeData.tollFee,
+        outbound,
+        returnRoute,
+        totalDistanceKm,
+        totalDurationMinutes,
+        totalTollFee,
       });
-    } catch (error) {
+    } catch (routeError) {
       setError(
-        error instanceof Error
-          ? error.message
-          : "차비 계산 중 오류가 발생했습니다."
+        routeError instanceof Error
+          ? routeError.message
+          : "경로 계산 중 오류가 발생했습니다."
       );
     } finally {
       setLoading(false);
@@ -417,6 +521,44 @@ export default function Home() {
                   </p>
                 </div>
               </div>
+            ) : fuelAutoError ? (
+              <div>
+                <label className="mb-2 block text-sm font-semibold">
+                  현재 유가
+                </label>
+
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                  <p className="mb-3 text-sm font-semibold text-amber-800">
+                    유가 자동조회에 실패했습니다.
+                  </p>
+
+                  <p className="mb-3 text-xs leading-5 text-amber-700">
+                    아래에 현재 유가를 직접 입력하면
+                    계속 계산할 수 있습니다.
+                  </p>
+
+                  <div className="flex items-center rounded-xl border border-amber-200 bg-white">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min="0"
+                      value={fuelPrice}
+                      onChange={(event) => {
+                        setFuelPrice(
+                          event.target.value
+                        );
+                        resetResult();
+                      }}
+                      placeholder="예: 1834"
+                      className="min-w-0 flex-1 bg-transparent px-4 py-3 outline-none"
+                    />
+
+                    <span className="pr-4 text-sm font-medium text-slate-400">
+                      원/L
+                    </span>
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="rounded-xl bg-slate-50 p-4 text-sm leading-6 text-slate-500">
                 출발지와 연료 종류를 기준으로 계산할 때
@@ -511,8 +653,7 @@ export default function Home() {
 
                   <div className="mt-5 rounded-2xl bg-white/10 p-4">
                     <p className="text-sm text-slate-300">
-                      {passengers}명 탑승 시
-                      1인당
+                      {passengers}명 탑승 시 1인당
                     </p>
 
                     <p className="mt-1 text-2xl font-bold">
@@ -527,15 +668,15 @@ export default function Home() {
                 <div className="space-y-4 p-6">
                   <ResultRow
                     label="총 이동거리"
-                    value={`${result.totalDistance.toLocaleString(
-                      "ko-KR"
+                    value={`${formatDistance(
+                      route.totalDistanceKm
                     )} km`}
                   />
 
                   <ResultRow
                     label="예상 이동시간"
                     value={formatDuration(
-                      result.totalDuration
+                      route.totalDurationMinutes
                     )}
                   />
 
@@ -563,9 +704,68 @@ export default function Home() {
                   <ResultRow
                     label="통행료"
                     value={`₩${formatWon(
-                      result.totalToll
+                      route.totalTollFee
                     )}`}
                   />
+
+                  {tripType === "roundtrip" &&
+                    route.returnRoute && (
+                      <div className="rounded-2xl bg-slate-50 p-4">
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          왕복 경로
+                        </p>
+
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between gap-4">
+                            <span className="text-slate-500">
+                              가는 길
+                            </span>
+
+                            <span className="text-right font-medium">
+                              {formatDistance(
+                                route.outbound
+                                  .distanceKm
+                              )}
+                              km ·{" "}
+                              {formatDuration(
+                                route.outbound
+                                  .durationMinutes
+                              )}
+                              {" · "}
+                              ₩
+                              {formatWon(
+                                route.outbound
+                                  .tollFee
+                              )}
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between gap-4">
+                            <span className="text-slate-500">
+                              오는 길
+                            </span>
+
+                            <span className="text-right font-medium">
+                              {formatDistance(
+                                route.returnRoute
+                                  .distanceKm
+                              )}
+                              km ·{" "}
+                              {formatDuration(
+                                route.returnRoute
+                                  .durationMinutes
+                              )}
+                              {" · "}
+                              ₩
+                              {formatWon(
+                                route.returnRoute
+                                  .tollFee
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                   <div className="border-t border-slate-200 pt-4">
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -573,8 +773,8 @@ export default function Home() {
                     </p>
 
                     <p className="text-sm leading-6 text-slate-600">
-                      {formatWon(
-                        result.totalDistance
+                      {formatDistance(
+                        route.totalDistanceKm
                       )}
                       km ÷ {efficiency}km/L ={" "}
                       {result.fuelUsed.toFixed(
@@ -607,7 +807,7 @@ export default function Home() {
                       )}
                       원 + 통행료{" "}
                       {formatWon(
-                        result.totalToll
+                        route.totalTollFee
                       )}
                       원 = 총{" "}
                       {formatWon(

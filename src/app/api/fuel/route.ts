@@ -29,14 +29,14 @@ const PRODUCT_CODES: Record<FuelType, string> = {
 };
 
 /*
- * Kakao Local API에서 받는 좌표계
+ * Kakao Local API 좌표계
  * WGS84 경도 / 위도
  */
 const WGS84 =
   "+proj=longlat +datum=WGS84 +no_defs";
 
 /*
- * Opinet 반경검색 API에서 사용하는 KATEC 좌표계
+ * Opinet 반경검색 API용 KATEC 좌표계
  */
 const KATEC =
   "+proj=tmerc " +
@@ -51,10 +51,7 @@ const KATEC =
   "+no_defs";
 
 function convertToKatec(lng: number, lat: number) {
-  const [x, y] = proj4(WGS84, KATEC, [
-    lng,
-    lat,
-  ]);
+  const [x, y] = proj4(WGS84, KATEC, [lng, lat]);
 
   return {
     x: Math.round(x),
@@ -70,8 +67,7 @@ export async function GET(request: NextRequest) {
     if (!OPINET_API_KEY) {
       return NextResponse.json(
         {
-          error:
-            "Opinet API 인증정보가 설정되지 않았습니다.",
+          error: "Opinet API 인증정보가 설정되지 않았습니다.",
         },
         {
           status: 500,
@@ -82,16 +78,10 @@ export async function GET(request: NextRequest) {
     /*
      * 2. 요청 파라미터
      */
-    const searchParams =
-      request.nextUrl.searchParams;
+    const searchParams = request.nextUrl.searchParams;
 
-    const lng = Number(
-      searchParams.get("lng")
-    );
-
-    const lat = Number(
-      searchParams.get("lat")
-    );
+    const lng = Number(searchParams.get("lng"));
+    const lat = Number(searchParams.get("lat"));
 
     const requestedFuel =
       searchParams.get("fuel") ?? "gasoline";
@@ -149,8 +139,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const fuel =
-      requestedFuel as FuelType;
+    const fuel = requestedFuel as FuelType;
 
     /*
      * 5. WGS84 → KATEC
@@ -182,19 +171,28 @@ export async function GET(request: NextRequest) {
     /*
      * 출발지 반경 5km
      */
-    url.searchParams.set("radius", "5000");
+    url.searchParams.set(
+      "radius",
+      "5000"
+    );
 
     /*
      * 1 = 가격순
      */
-    url.searchParams.set("sort", "1");
+    url.searchParams.set(
+      "sort",
+      "1"
+    );
 
     url.searchParams.set(
       "prodcd",
       PRODUCT_CODES[fuel]
     );
 
-    url.searchParams.set("out", "json");
+    url.searchParams.set(
+      "out",
+      "json"
+    );
 
     /*
      * 7. Opinet 호출
@@ -216,12 +214,13 @@ export async function GET(request: NextRequest) {
       (await response.json()) as OpinetResponse;
 
     /*
-     * 8. 차비얼마에서 사용할 데이터만 정리
+     * 8. 필요한 데이터 정리
      */
     const stations =
       (data.RESULT?.OIL ?? [])
         .map((station) => ({
-          id: station.UNI_ID ?? "",
+          id:
+            station.UNI_ID ?? "",
 
           name:
             station.OS_NM?.trim() ||
@@ -230,19 +229,23 @@ export async function GET(request: NextRequest) {
           brand:
             station.POLL_DIV_CD ?? "",
 
-          price: Number(station.PRICE),
+          price:
+            Number(station.PRICE),
 
-          distance: Number(
-            station.DISTANCE
-          ),
+          distance:
+            Number(
+              station.DISTANCE
+            ),
 
-          x: Number(
-            station.GIS_X_COOR
-          ),
+          x:
+            Number(
+              station.GIS_X_COOR
+            ),
 
-          y: Number(
-            station.GIS_Y_COOR
-          ),
+          y:
+            Number(
+              station.GIS_Y_COOR
+            ),
         }))
         .filter(
           (station) =>
@@ -258,6 +261,9 @@ export async function GET(request: NextRequest) {
 
     /*
      * 9. 검색 결과 없음
+     *
+     * 오류 응답에는 Cache-Control을 넣지 않는다.
+     * 일시적인 Opinet 오류가 캐시되는 것을 방지한다.
      */
     if (stations.length === 0) {
       return NextResponse.json(
@@ -286,7 +292,7 @@ export async function GET(request: NextRequest) {
     }
 
     /*
-     * 10. 평균 유가
+     * 10. 평균 유가 계산
      */
     const totalPrice =
       stations.reduce(
@@ -295,50 +301,55 @@ export async function GET(request: NextRequest) {
         0
       );
 
-    const averagePrice = Math.round(
-      totalPrice / stations.length
-    );
+    const averagePrice =
+      Math.round(
+        totalPrice /
+          stations.length
+      );
 
     /*
-     * 11. 최저가 계산
+     * 11. 최저 가격
      */
-    const lowestPrice = Math.min(
-      ...stations.map(
-        (station) => station.price
-      )
-    );
+    const lowestPrice =
+      Math.min(
+        ...stations.map(
+          (station) =>
+            station.price
+        )
+      );
 
     /*
-     * 동일한 최저가 주유소가 여러 곳이면
-     * 출발지에서 가장 가까운 곳을 선택
+     * 동일 최저가가 여러 곳이면
+     * 출발지에서 가장 가까운 곳 선택
      */
     const lowestStation =
       stations
         .filter(
           (station) =>
-            station.price === lowestPrice
+            station.price ===
+            lowestPrice
         )
         .sort(
           (a, b) =>
-            a.distance - b.distance
+            a.distance -
+            b.distance
         )[0];
 
     /*
-     * 12. 거리 기준 가장 가까운 주유소
-     *
-     * 추후 UI 확장 시 사용할 수 있도록
-     * API 응답에는 함께 제공
+     * 12. 가격과 관계없이
+     * 출발지에서 가장 가까운 주유소
      */
     const nearestStation =
       [...stations].sort(
         (a, b) =>
-          a.distance - b.distance
+          a.distance -
+          b.distance
       )[0];
 
     /*
-     * 13. 결과 반환
+     * 13. 최종 응답 데이터
      */
-    return NextResponse.json({
+    const result = {
       fuel,
 
       source: "Opinet",
@@ -357,9 +368,6 @@ export async function GET(request: NextRequest) {
 
       averagePrice,
 
-      /*
-       * 최저가 + 동일 가격이면 최단거리
-       */
       lowest: {
         name:
           lowestStation.name,
@@ -371,10 +379,6 @@ export async function GET(request: NextRequest) {
           lowestStation.distance,
       },
 
-      /*
-       * 가장 가까운 주유소
-       * 현재 UI에서는 사용하지 않아도 됨
-       */
       nearest: {
         name:
           nearestStation.name,
@@ -387,13 +391,42 @@ export async function GET(request: NextRequest) {
       },
 
       stations,
-    });
+    };
+
+    /*
+     * 14. 캐시 정책
+     *
+     * 브라우저:
+     * 5분 동안 재사용
+     *
+     * Cloudflare 공유 캐시:
+     * 1시간 동안 재사용
+     *
+     * 캐시 만료 후:
+     * 최대 24시간 동안 기존 데이터를 사용할 수 있게 하면서
+     * 새 데이터를 갱신할 수 있도록 허용
+     *
+     * 동일한 출발지 좌표 + 연료 요청이 반복될 때
+     * Opinet API 호출량을 줄이기 위한 설정
+     */
+    return NextResponse.json(
+      result,
+      {
+        headers: {
+          "Cache-Control":
+            "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400",
+        },
+      }
+    );
   } catch (error) {
     console.error(
       "Opinet fuel API error:",
       error
     );
 
+    /*
+     * 오류 응답은 캐시하지 않는다.
+     */
     return NextResponse.json(
       {
         error:
