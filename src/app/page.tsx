@@ -75,6 +75,39 @@ type FuelResult = {
   };
 };
 
+type RecentCalculation = {
+  id: string;
+  savedAt: string;
+  origin: Place;
+  destination: Place;
+  selectedVehicle: Vehicle | null;
+  fuelType: FuelType;
+  efficiency: string;
+  fuelPrice: string;
+  passengers: number;
+  tripType: TripType;
+  route: TripRouteResult;
+  totalCost: number;
+  costPerPerson: number;
+};
+
+const RECENT_CALCULATIONS_KEY = "car-cost-recent-calculations";
+const MAX_RECENT_CALCULATIONS = 5;
+const SHARE_QUERY_KEY = "share";
+
+type SharedCalculation = {
+  version: 1;
+  origin: Place;
+  destination: Place;
+  selectedVehicle: Vehicle | null;
+  fuelType: FuelType;
+  efficiency: string;
+  fuelPrice: string;
+  passengers: number;
+  tripType: TripType;
+  route: TripRouteResult;
+};
+
 const FUEL_OPTIONS: Array<{
   value: FuelType;
   label: string;
@@ -147,6 +180,11 @@ export default function Home() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [shareStatus, setShareStatus] = useState("");
+  const [recentCalculations, setRecentCalculations] = useState<
+    RecentCalculation[]
+  >([]);
+  const [recentLoaded, setRecentLoaded] = useState(false);
 
   const resetResult = () => {
     setRoute(null);
@@ -159,6 +197,76 @@ export default function Home() {
     setFuelAutoError("");
     resetResult();
   };
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const shared = params.get(SHARE_QUERY_KEY);
+
+      if (shared) {
+        const parsed = JSON.parse(shared) as SharedCalculation;
+
+        if (
+          parsed.version === 1 &&
+          parsed.origin?.id &&
+          parsed.destination?.id &&
+          parsed.route &&
+          Number(parsed.efficiency) > 0 &&
+          Number(parsed.fuelPrice) > 0 &&
+          Number(parsed.passengers) > 0 &&
+          (parsed.tripType === "oneway" ||
+            parsed.tripType === "roundtrip")
+        ) {
+          setOrigin(parsed.origin);
+          setDestination(parsed.destination);
+          setSelectedVehicle(parsed.selectedVehicle ?? null);
+          setFuelType(parsed.fuelType);
+          setEfficiency(parsed.efficiency);
+          setFuelPrice(parsed.fuelPrice);
+          setPassengers(parsed.passengers);
+          setTripType(parsed.tripType);
+          setRoute(parsed.route);
+          setFuelInfo(null);
+          setFuelAutoError("");
+          setError("");
+          setShareStatus("공유받은 계산 결과를 불러왔습니다.");
+
+          window.setTimeout(() => {
+            document
+              .getElementById("calculation-result")
+              ?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+          }, 100);
+        }
+      }
+    } catch {
+      // 잘못되었거나 오래된 공유 링크는 무시하고 기본 화면을 표시합니다.
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(
+        RECENT_CALCULATIONS_KEY
+      );
+
+      if (saved) {
+        const parsed = JSON.parse(saved);
+
+        if (Array.isArray(parsed)) {
+          setRecentCalculations(
+            parsed.slice(0, MAX_RECENT_CALCULATIONS)
+          );
+        }
+      }
+    } catch {
+      window.localStorage.removeItem(RECENT_CALCULATIONS_KEY);
+    } finally {
+      setRecentLoaded(true);
+    }
+  }, []);
 
   const result = useMemo(() => {
     if (!route) {
@@ -195,6 +303,178 @@ export default function Home() {
       costPerPerson,
     };
   }, [route, efficiency, fuelPrice, passengers]);
+
+  useEffect(() => {
+    if (
+      !recentLoaded ||
+      !route ||
+      !result ||
+      !origin ||
+      !destination ||
+      Number(fuelPrice) <= 0
+    ) {
+      return;
+    }
+
+    const signature = [
+      origin.id,
+      destination.id,
+      tripType,
+      selectedVehicle?.id ?? "manual",
+      fuelType,
+      efficiency,
+      fuelPrice,
+      passengers,
+    ].join("|");
+
+    const recentItem: RecentCalculation = {
+      id: signature,
+      savedAt: new Date().toISOString(),
+      origin,
+      destination,
+      selectedVehicle,
+      fuelType,
+      efficiency,
+      fuelPrice,
+      passengers,
+      tripType,
+      route,
+      totalCost: result.totalCost,
+      costPerPerson: result.costPerPerson,
+    };
+
+    setRecentCalculations((previous) => {
+      const next = [
+        recentItem,
+        ...previous.filter((item) => item.id !== signature),
+      ].slice(0, MAX_RECENT_CALCULATIONS);
+
+      window.localStorage.setItem(
+        RECENT_CALCULATIONS_KEY,
+        JSON.stringify(next)
+      );
+
+      return next;
+    });
+  }, [
+    recentLoaded,
+    route,
+    result,
+    origin,
+    destination,
+    selectedVehicle,
+    fuelType,
+    efficiency,
+    fuelPrice,
+    passengers,
+    tripType,
+  ]);
+
+  const loadRecentCalculation = (item: RecentCalculation) => {
+    setOrigin(item.origin);
+    setDestination(item.destination);
+    setSelectedVehicle(item.selectedVehicle);
+    setFuelType(item.fuelType);
+    setEfficiency(item.efficiency);
+    setFuelPrice(item.fuelPrice);
+    setPassengers(item.passengers);
+    setTripType(item.tripType);
+    setFuelInfo(null);
+    setFuelAutoError("");
+    setError("");
+    setRoute(item.route);
+
+    window.setTimeout(() => {
+      document
+        .getElementById("calculation-result")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  };
+
+  const deleteRecentCalculation = (id: string) => {
+    setRecentCalculations((previous) => {
+      const next = previous.filter((item) => item.id !== id);
+
+      window.localStorage.setItem(
+        RECENT_CALCULATIONS_KEY,
+        JSON.stringify(next)
+      );
+
+      return next;
+    });
+  };
+
+  const clearRecentCalculations = () => {
+    setRecentCalculations([]);
+    window.localStorage.removeItem(RECENT_CALCULATIONS_KEY);
+  };
+
+  const handleShare = async () => {
+    if (!origin || !destination || !route || !result) {
+      return;
+    }
+
+    const tripLabel = tripType === "roundtrip" ? "왕복" : "편도";
+    const sharedCalculation: SharedCalculation = {
+      version: 1,
+      origin,
+      destination,
+      selectedVehicle,
+      fuelType,
+      efficiency,
+      fuelPrice,
+      passengers,
+      tripType,
+      route,
+    };
+
+    const shareUrl = new URL("https://car-cost.kr");
+    shareUrl.searchParams.set(
+      SHARE_QUERY_KEY,
+      JSON.stringify(sharedCalculation)
+    );
+
+    const shareText = [
+      "차비얼마 🚗",
+      `${origin.name} → ${destination.name}`,
+      `${tripLabel} · ${formatDistance(route.totalDistanceKm)}km`,
+      `예상 차비 ${formatWon(result.totalCost)}원`,
+      `${passengers}명 탑승 시 1인당 ${formatWon(result.costPerPerson)}원`,
+      "링크를 열면 같은 계산 결과를 바로 볼 수 있어요.",
+    ].join("\n");
+
+    setShareStatus("");
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "차비얼마",
+          text: shareText,
+          url: shareUrl.toString(),
+        });
+        setShareStatus("공유했습니다.");
+        return;
+      }
+
+      await navigator.clipboard.writeText(
+        `${shareText}\n${shareUrl.toString()}`
+      );
+      setShareStatus("공유 링크를 클립보드에 복사했습니다.");
+    } catch (shareError) {
+      if (shareError instanceof DOMException && shareError.name === "AbortError") {
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(
+          `${shareText}\n${shareUrl.toString()}`
+        );
+        setShareStatus("공유 링크를 클립보드에 복사했습니다.");
+      } catch {
+        setShareStatus("공유하지 못했습니다. 다시 시도해주세요.");
+      }
+    }
+  };
 
   const fetchRoute = async (
     from: Place,
@@ -711,8 +991,87 @@ export default function Home() {
           </div>
         </section>
 
+        {recentCalculations.length > 0 && (
+          <section className="mt-6 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <div>
+                <h2 className="font-bold text-slate-900">최근 계산</h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  최근 계산한 경로를 최대 5개까지 저장합니다.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={clearRecentCalculations}
+                className="shrink-0 text-xs font-semibold text-slate-400 hover:text-red-500"
+              >
+                전체 삭제
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {recentCalculations.map((item) => (
+                <div
+                  key={item.id}
+                  className="rounded-2xl border border-slate-200 p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() => loadRecentCalculation(item)}
+                      className="min-w-0 flex-1 text-left"
+                    >
+                      <p className="truncate text-sm font-bold text-slate-900">
+                        {item.origin.name} → {item.destination.name}
+                      </p>
+
+                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                        {item.tripType === "roundtrip" ? "왕복" : "편도"}
+                        {item.selectedVehicle
+                          ? ` · ${item.selectedVehicle.model}`
+                          : ` · 연비 ${item.efficiency} km/L`}
+                        {` · ${item.passengers}명`}
+                      </p>
+
+                      <div className="mt-3 flex items-end justify-between gap-3">
+                        <div>
+                          <p className="text-lg font-bold text-blue-600">
+                            ₩{formatWon(item.totalCost)}
+                          </p>
+                          <p className="text-[11px] text-slate-400">
+                            1인당 ₩{formatWon(item.costPerPerson)}
+                          </p>
+                        </div>
+
+                        <div className="text-right">
+                          <p className="text-xs font-medium text-slate-500">
+                            {formatDistance(item.route.totalDistanceKm)} km
+                          </p>
+                          <p className="mt-1 text-[11px] text-blue-600">
+                            다시 보기
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => deleteRecentCalculation(item.id)}
+                      className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-slate-400 hover:bg-slate-100 hover:text-red-500"
+                      aria-label="최근 계산 삭제"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {route && result && origin && destination && (
-          <section className="mt-6">
+          <section id="calculation-result" className="mt-6 scroll-mt-4">
             <div className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
               <div className="bg-slate-900 p-6 text-white">
                 <p className="text-sm font-medium text-slate-300">
@@ -853,6 +1212,22 @@ export default function Home() {
                       </div>
                     </div>
                   )}
+
+                <div className="border-t border-slate-200 pt-4">
+                  <button
+                    type="button"
+                    onClick={handleShare}
+                    className="w-full rounded-xl bg-blue-600 px-4 py-3.5 text-sm font-bold text-white transition hover:bg-blue-700 active:scale-[0.99]"
+                  >
+                    공유하기
+                  </button>
+
+                  {shareStatus && (
+                    <p className="mt-2 text-center text-xs font-medium text-slate-500">
+                      {shareStatus}
+                    </p>
+                  )}
+                </div>
 
                 <div className="border-t border-slate-200 pt-4">
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
