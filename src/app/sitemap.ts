@@ -15,6 +15,36 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1,
     },
     {
+      url: "https://car-cost.kr/tools",
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.9,
+    },
+    {
+      url: "https://car-cost.kr/fuel-cost-calculator",
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.9,
+    },
+    {
+      url: "https://car-cost.kr/trip-cost-calculator",
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+    {
+      url: "https://car-cost.kr/commute-cost-calculator",
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+    {
+      url: "https://car-cost.kr/carpool-calculator",
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+    {
       url: "https://car-cost.kr/routes",
       lastModified: now,
       changeFrequency: "weekly",
