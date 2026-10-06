@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import SiteFooter from "@/components/SiteFooter";
+import HomeGuideContent from "@/components/HomeGuideContent";
 
 type TripType = "oneway" | "roundtrip";
 type FuelType = "gasoline" | "diesel" | "premium" | "lpg";
@@ -1257,6 +1258,8 @@ export default function Home() {
             </div>
           </section>
         )}
+
+        <HomeGuideContent />
 
         <div className="mt-6">
           <SiteFooter />
