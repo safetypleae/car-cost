@@ -77,6 +77,27 @@ type FuelResult = {
   };
 };
 
+type ParkingLot = {
+  id: string;
+  name: string;
+  address: string;
+  roadAddress: string;
+  phone: string;
+  distanceMeters: number;
+  lat: number;
+  lng: number;
+  kakaoUrl: string;
+  feeInfo: string;
+  basicTime: number | null;
+  basicCharge: number | null;
+  addUnitTime: number | null;
+  addUnitCharge: number | null;
+  dayTicket: number | null;
+  referenceDate: string;
+  officialMatched: boolean;
+};
+type ParkingMode = "none" | "auto" | "manual";
+
 type RecentCalculation = {
   id: string;
   savedAt: string;
@@ -91,6 +112,8 @@ type RecentCalculation = {
   route: TripRouteResult;
   totalCost: number;
   costPerPerson: number;
+  parkingFee?: number;
+  parkingLabel?: string;
 };
 
 const RECENT_CALCULATIONS_KEY = "car-cost-recent-calculations";
@@ -108,6 +131,8 @@ type SharedCalculation = {
   passengers: number;
   tripType: TripType;
   route: TripRouteResult;
+  parkingFee?: number;
+  parkingLabel?: string;
 };
 
 const FUEL_OPTIONS: Array<{
@@ -154,6 +179,26 @@ const formatDisplacement = (value: number | null) => {
   return `${value.toLocaleString("ko-KR")}cc`;
 };
 
+const estimateParkingFee = (parking: ParkingLot, minutes: number) => {
+  if (minutes <= 0) return 0;
+  if (parking.feeInfo.includes("무료")) return 0;
+  if (parking.basicTime == null || parking.basicCharge == null) return null;
+
+  let fee = parking.basicCharge;
+  if (minutes > parking.basicTime) {
+    if (parking.addUnitTime && parking.addUnitCharge != null) {
+      fee += Math.ceil((minutes - parking.basicTime) / parking.addUnitTime) * parking.addUnitCharge;
+    } else {
+      return null;
+    }
+  }
+
+  if (parking.dayTicket && parking.dayTicket > 0) {
+    fee = Math.min(fee, parking.dayTicket);
+  }
+  return Math.max(0, fee);
+};
+
 export default function Home() {
   const [origin, setOrigin] = useState<Place | null>(null);
   const [destination, setDestination] = useState<Place | null>(null);
@@ -173,6 +218,13 @@ export default function Home() {
   const [fuelAutoError, setFuelAutoError] = useState("");
 
   const [passengers, setPassengers] = useState(1);
+  const [parkingMode, setParkingMode] = useState<ParkingMode>("none");
+  const [selectedParking, setSelectedParking] = useState<ParkingLot | null>(null);
+  const [parkingDurationMinutes, setParkingDurationMinutes] = useState(120);
+  const [manualParkingFee, setManualParkingFee] = useState("0");
+
+  const parkingFee = Math.max(0, Number(manualParkingFee) || 0);
+  const parkingLabel = parkingFee > 0 ? "직접 입력한 예상 주차비" : "주차비 미포함";
 
   const [tripType, setTripType] =
     useState<TripType>("oneway");
@@ -227,6 +279,14 @@ export default function Home() {
           setFuelPrice(parsed.fuelPrice);
           setPassengers(parsed.passengers);
           setTripType(parsed.tripType);
+          if ((parsed.parkingFee ?? 0) > 0) {
+            setParkingMode("manual");
+            setManualParkingFee(String(parsed.parkingFee));
+          } else {
+            setParkingMode("none");
+            setManualParkingFee("0");
+          }
+          setSelectedParking(null);
           setRoute(parsed.route);
           setFuelInfo(null);
           setFuelAutoError("");
@@ -293,7 +353,7 @@ export default function Home() {
       fuelUsed * pricePerLiter;
 
     const totalCost =
-      fuelCost + route.totalTollFee;
+      fuelCost + route.totalTollFee + parkingFee;
 
     const costPerPerson =
       totalCost / passengers;
@@ -304,7 +364,7 @@ export default function Home() {
       totalCost,
       costPerPerson,
     };
-  }, [route, efficiency, fuelPrice, passengers]);
+  }, [route, efficiency, fuelPrice, passengers, parkingFee]);
 
   useEffect(() => {
     if (
@@ -327,6 +387,8 @@ export default function Home() {
       efficiency,
       fuelPrice,
       passengers,
+      parkingFee,
+      parkingLabel,
     ].join("|");
 
     const recentItem: RecentCalculation = {
@@ -343,6 +405,8 @@ export default function Home() {
       route,
       totalCost: result.totalCost,
       costPerPerson: result.costPerPerson,
+      parkingFee,
+      parkingLabel,
     };
 
     setRecentCalculations((previous) => {
@@ -370,6 +434,8 @@ export default function Home() {
     fuelPrice,
     passengers,
     tripType,
+    parkingFee,
+    parkingLabel,
   ]);
 
   const loadRecentCalculation = (item: RecentCalculation) => {
@@ -381,6 +447,14 @@ export default function Home() {
     setFuelPrice(item.fuelPrice);
     setPassengers(item.passengers);
     setTripType(item.tripType);
+    if ((item.parkingFee ?? 0) > 0) {
+      setParkingMode("manual");
+      setManualParkingFee(String(item.parkingFee));
+    } else {
+      setParkingMode("none");
+      setManualParkingFee("0");
+    }
+    setSelectedParking(null);
     setFuelInfo(null);
     setFuelAutoError("");
     setError("");
@@ -428,9 +502,11 @@ export default function Home() {
       passengers,
       tripType,
       route,
+      parkingFee,
+      parkingLabel,
     };
 
-    const shareUrl = new URL(window.location.origin);
+    const shareUrl = new URL("https://car-cost.kr");
     shareUrl.searchParams.set(
       SHARE_QUERY_KEY,
       JSON.stringify(sharedCalculation)
@@ -440,7 +516,7 @@ export default function Home() {
       "차비얼마 🚗",
       `${origin.name} → ${destination.name}`,
       `${tripLabel} · ${formatDistance(route.totalDistanceKm)}km`,
-      `예상 차비 ${formatWon(result.totalCost)}원`,
+      `예상 차비 ${formatWon(result.totalCost)}원${parkingFee > 0 ? ` (주차비 ${formatWon(parkingFee)}원 포함)` : ""}`,
       `${passengers}명 탑승 시 1인당 ${formatWon(result.costPerPerson)}원`,
       "링크를 열면 같은 계산 결과를 바로 볼 수 있어요.",
     ].join("\n");
@@ -483,8 +559,12 @@ export default function Home() {
     to: Place
   ): Promise<RouteResult> => {
     const params = new URLSearchParams({
-      origin: from.roadAddress || from.address,
-      destination: to.roadAddress || to.address,
+      origin: from.name,
+      destination: to.name,
+      originLat: String(from.lat),
+      originLng: String(from.lng),
+      destinationLat: String(to.lat),
+      destinationLng: String(to.lng),
     });
 
     const response = await fetch(
@@ -732,10 +812,16 @@ export default function Home() {
               selectedPlace={destination}
               onSelect={(place) => {
                 setDestination(place);
+                setParkingMode("none");
+                setSelectedParking(null);
+                setManualParkingFee("0");
                 resetResult();
               }}
               onClear={() => {
                 setDestination(null);
+                setParkingMode("none");
+                setSelectedParking(null);
+                setManualParkingFee("0");
                 resetResult();
               }}
             />
@@ -974,6 +1060,16 @@ export default function Home() {
               </div>
             </div>
 
+            <ParkingSelector
+              destination={destination}
+              manualParkingFee={manualParkingFee}
+              onManualParkingFeeChange={(value) => {
+                setParkingMode(Number(value) > 0 ? "manual" : "none");
+                setManualParkingFee(value);
+                resetResult();
+              }}
+            />
+
             {error && (
               <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                 {error}
@@ -1166,6 +1262,17 @@ export default function Home() {
                   value={`₩${formatWon(route.totalTollFee)}`}
                 />
 
+                <ResultRow
+                  label="주차비"
+                  value={parkingFee > 0 ? `₩${formatWon(parkingFee)}` : "₩0"}
+                />
+
+                {parkingFee > 0 && (
+                  <p className="-mt-2 text-right text-xs text-slate-400">
+                    {parkingLabel}
+                  </p>
+                )}
+
                 {tripType === "roundtrip" &&
                   route.returnRoute && (
                     <div className="rounded-2xl bg-slate-50 p-4">
@@ -1266,6 +1373,120 @@ export default function Home() {
         </div>
       </div>
     </main>
+  );
+}
+
+function ParkingSelector({
+  destination,
+  manualParkingFee,
+  onManualParkingFeeChange,
+}: {
+  destination: Place | null;
+  manualParkingFee: string;
+  onManualParkingFeeChange: (value: string) => void;
+}) {
+  const [parkings, setParkings] = useState<ParkingLot[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [parkingError, setParkingError] = useState("");
+
+  const searchParking = async () => {
+    if (!destination) return;
+    setLoading(true);
+    setParkingError("");
+    try {
+      const params = new URLSearchParams({
+        lat: String(destination.lat),
+        lng: String(destination.lng),
+      });
+      const response = await fetch(`/api/parking?${params.toString()}`);
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "주변 주차장을 조회하지 못했습니다.");
+      }
+      setParkings(Array.isArray(data.parkings) ? data.parkings : []);
+      if (!data.parkings?.length) {
+        setParkingError("목적지 주변에서 확인 가능한 주차장을 찾지 못했습니다.");
+      }
+    } catch (error) {
+      setParkings([]);
+      setParkingError(error instanceof Error ? error.message : "주차장 조회 중 오류가 발생했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="border-t border-slate-100 pt-5">
+      <div className="mb-3 flex items-center gap-2">
+        <h2 className="text-sm font-semibold">목적지 주변 주차장</h2>
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">안내</span>
+      </div>
+
+      <button
+        type="button"
+        onClick={searchParking}
+        disabled={!destination || loading}
+        className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white disabled:bg-slate-300"
+      >
+        {loading ? "검색 중" : "주변 주차장 찾기"}
+      </button>
+
+      {!destination && <p className="mt-3 text-xs text-slate-500">목적지를 먼저 선택해주세요.</p>}
+      {parkingError && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-700">{parkingError}</p>}
+
+      {parkings.length > 0 && (
+        <div className="mt-3 space-y-2">
+          {parkings.map((parking) => (
+            <div key={parking.id} className="w-full rounded-xl border border-slate-200 bg-white p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-slate-900">{parking.name}</p>
+                  <p className="mt-1 truncate text-xs text-slate-500">{parking.roadAddress || parking.address || "주소 정보 없음"}</p>
+                  <p className="mt-1 text-[11px] text-slate-400">목적지에서 약 {parking.distanceMeters.toLocaleString("ko-KR")}m</p>
+                </div>
+                {parking.kakaoUrl && (
+                  <a
+                    href={parking.kakaoUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="shrink-0 rounded-lg border border-slate-200 px-2.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                  >
+                    상세보기
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <p className="mt-3 text-[11px] leading-5 text-slate-400">
+        Kakao Local의 장소 정보를 기준으로 목적지에서 가까운 주차장을 안내합니다. 실제 운영 여부와 요금은 방문 전에 확인해주세요.
+      </p>
+
+      <div className="mt-4 rounded-xl bg-slate-50 p-3">
+        <label htmlFor="manual-parking-fee" className="mb-2 block text-xs font-semibold text-slate-700">
+          예상 주차비 직접 입력
+        </label>
+        <div className="relative">
+          <input
+            id="manual-parking-fee"
+            type="number"
+            min="0"
+            step="100"
+            inputMode="numeric"
+            value={manualParkingFee}
+            onChange={(event) => onManualParkingFeeChange(event.target.value)}
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-10 text-right text-sm font-semibold outline-none focus:border-blue-500"
+            placeholder="0"
+          />
+          <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">원</span>
+        </div>
+        <p className="mt-2 text-[11px] leading-5 text-slate-400">
+          방문할 주차장의 예상 요금을 직접 입력하면 총 차비와 1인당 차비에 포함됩니다.
+        </p>
+      </div>
+    </div>
   );
 }
 

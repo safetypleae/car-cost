@@ -121,9 +121,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const originLat = Number(searchParams.get("originLat"));
+    const originLng = Number(searchParams.get("originLng"));
+    const destinationLat = Number(searchParams.get("destinationLat"));
+    const destinationLng = Number(searchParams.get("destinationLng"));
+
+    const hasOriginCoordinates = Number.isFinite(originLat) && Number.isFinite(originLng);
+    const hasDestinationCoordinates = Number.isFinite(destinationLat) && Number.isFinite(destinationLng);
+
     const [start, goal] = await Promise.all([
-      geocode(origin),
-      geocode(destination),
+      hasOriginCoordinates ? Promise.resolve({ lat: originLat, lng: originLng }) : geocode(origin),
+      hasDestinationCoordinates
+        ? Promise.resolve({ lat: destinationLat, lng: destinationLng })
+        : geocode(destination),
     ]);
 
     const directions = await getDirections(start, goal);
