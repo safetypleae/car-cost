@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { routeGuides } from "@/data/route-guides";
+import { routeGuides as baseRouteGuides } from "@/data/route-guides";
+import { extraRouteGuides } from "@/data/route-guides-extra";
+
+const routeGuides = [...baseRouteGuides, ...extraRouteGuides];
 
 export const metadata: Metadata = {
   title: "주요 자동차 이동비 계산 경로",

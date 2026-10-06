@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getRouteGuide, routeGuides } from "@/data/route-guides";
+import { routeGuides as baseRouteGuides } from "@/data/route-guides";
+import { extraRouteGuides } from "@/data/route-guides-extra";
+
+const routeGuides = [...baseRouteGuides, ...extraRouteGuides];
+
+function getRouteGuide(slug: string) {
+  return routeGuides.find((route) => route.slug === slug);
+}
 
 type RoutePageProps = {
   params: Promise<{ slug: string }>;

@@ -1,5 +1,8 @@
 import type { MetadataRoute } from "next";
-import { routeGuides } from "@/data/route-guides";
+import { routeGuides as baseRouteGuides } from "@/data/route-guides";
+import { extraRouteGuides } from "@/data/route-guides-extra";
+
+const routeGuides = [...baseRouteGuides, ...extraRouteGuides];
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
