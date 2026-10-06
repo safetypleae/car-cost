@@ -62,6 +62,11 @@ export const metadata: Metadata = {
       "max-video-preview": -1,
     },
   },
+  verification: {
+    other: {
+      "naver-site-verification": "102fcac8112500da73350cb22abf198b4496a42c",
+    },
+  },
   category: "travel",
 };
 
