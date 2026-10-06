@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import SiteFooter from "@/components/SiteFooter";
 
 type TripType = "oneway" | "roundtrip";
 type FuelType = "gasoline" | "diesel" | "premium" | "lpg";
@@ -428,7 +429,7 @@ export default function Home() {
       route,
     };
 
-    const shareUrl = new URL("https://car-cost.kr");
+    const shareUrl = new URL(window.location.origin);
     shareUrl.searchParams.set(
       SHARE_QUERY_KEY,
       JSON.stringify(sharedCalculation)
@@ -1257,15 +1258,9 @@ export default function Home() {
           </section>
         )}
 
-        <p className="mt-6 text-center text-xs leading-5 text-slate-400">
-          차량 연비는 한국에너지공단 공인 표시연비 정보를
-          활용합니다.
-          <br />
-          유가는 출발지 주변 주유소 정보를 기준으로 계산합니다.
-          <br />
-          실제 비용은 교통상황과 주행환경에 따라 달라질 수
-          있습니다.
-        </p>
+        <div className="mt-6">
+          <SiteFooter />
+        </div>
       </div>
     </main>
   );
