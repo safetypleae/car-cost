@@ -41,6 +41,28 @@ export async function generateMetadata({
   };
 }
 
+function getRelatedRoutes(currentSlug: string, origin: string, destination: string) {
+  const sameOrigin = routeGuides.filter(
+    (item) => item.slug !== currentSlug && item.origin === origin,
+  );
+  const connected = routeGuides.filter(
+    (item) =>
+      item.slug !== currentSlug &&
+      !sameOrigin.some((same) => same.slug === item.slug) &&
+      (item.origin === destination ||
+        item.destination === origin ||
+        item.destination === destination),
+  );
+  const others = routeGuides.filter(
+    (item) =>
+      item.slug !== currentSlug &&
+      !sameOrigin.some((same) => same.slug === item.slug) &&
+      !connected.some((candidate) => candidate.slug === item.slug),
+  );
+
+  return [...sameOrigin, ...connected, ...others].slice(0, 6);
+}
+
 export default async function RouteGuidePage({ params }: RoutePageProps) {
   const { slug } = await params;
   const route = getRouteGuide(slug);
@@ -48,6 +70,12 @@ export default async function RouteGuidePage({ params }: RoutePageProps) {
   if (!route) {
     notFound();
   }
+
+  const relatedRoutes = getRelatedRoutes(
+    route.slug,
+    route.origin,
+    route.destination,
+  );
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900">
@@ -57,7 +85,16 @@ export default async function RouteGuidePage({ params }: RoutePageProps) {
             차비얼마
           </Link>
           <span className="mx-2">/</span>
-          <span>{route.origin} → {route.destination}</span>
+          <Link
+            href="/routes"
+            className="font-semibold text-blue-600 hover:underline"
+          >
+            주요 경로
+          </Link>
+          <span className="mx-2">/</span>
+          <span>
+            {route.origin} → {route.destination}
+          </span>
         </nav>
 
         <header className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
@@ -75,8 +112,9 @@ export default async function RouteGuidePage({ params }: RoutePageProps) {
             <h2 className="font-bold">실제 이동비는 출발할 때 다시 계산하세요</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               거리와 소요시간은 경로와 교통 상황에 따라 달라지고, 기름값도 계속
-              변합니다. 차비얼마 계산기에서 출발지와 목적지를 검색하면 현재 조건을
-              기준으로 예상 연료비와 통행료, 인원별 차비를 계산할 수 있습니다.
+              변합니다. 차비얼마 계산기에서 정확한 출발 장소와 목적지를 검색하면
+              현재 조건을 기준으로 예상 연료비와 통행료, 인원별 차비를 계산할 수
+              있습니다.
             </p>
             <Link
               href="/"
@@ -174,11 +212,43 @@ export default async function RouteGuidePage({ params }: RoutePageProps) {
           </div>
         </section>
 
+        <section className="mt-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="text-sm font-bold text-blue-600">다른 이동 구간</p>
+              <h2 className="mt-1 text-xl font-bold">관련 자동차 이동비 경로</h2>
+            </div>
+            <Link
+              href="/routes"
+              className="shrink-0 text-sm font-bold text-blue-600 hover:underline"
+            >
+              전체 보기
+            </Link>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {relatedRoutes.map((item) => (
+              <Link
+                key={item.slug}
+                href={`/routes/${item.slug}`}
+                className="rounded-2xl border border-slate-200 p-4 transition hover:border-blue-300 hover:bg-blue-50"
+              >
+                <p className="font-bold">
+                  {item.origin} → {item.destination}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  자동차 이동비 계산 가이드
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+
         <div className="mt-6 rounded-3xl bg-slate-900 p-6 text-white sm:p-8">
           <h2 className="text-xl font-bold">현재 조건으로 직접 계산해보세요</h2>
           <p className="mt-2 text-sm leading-6 text-slate-300">
-            출발지·목적지, 차량 연비, 유종, 탑승 인원을 적용해 실제 여행 조건에
-            맞는 예상 차비를 확인할 수 있습니다.
+            정확한 출발 장소와 목적지, 차량 연비, 유종, 탑승 인원을 적용해 실제
+            여행 조건에 맞는 예상 차비를 확인할 수 있습니다.
           </p>
           <Link
             href="/"
@@ -189,6 +259,10 @@ export default async function RouteGuidePage({ params }: RoutePageProps) {
         </div>
 
         <footer className="py-8 text-center text-sm text-slate-500">
+          <Link href="/routes" className="hover:text-slate-900 hover:underline">
+            주요 경로
+          </Link>
+          <span className="mx-3">·</span>
           <Link href="/methodology" className="hover:text-slate-900 hover:underline">
             계산 기준·데이터 출처
           </Link>
