@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import OwnedVehiclePicker from '@/components/OwnedVehiclePicker';
-import TransportComparison from '@/components/TransportComparison';
 import SiteFooter from "@/components/SiteFooter";
 import HomeGuideContent from "@/components/HomeGuideContent";
 
@@ -878,15 +876,6 @@ export default function Home() {
                 </p>
               </div>
 
-              <details className="mb-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
-                <summary className="cursor-pointer font-medium text-slate-600">저장한 내 차 불러오기 · 저장</summary>
-                <div className="mt-3">
-              <OwnedVehiclePicker
-                candidate={selectedVehicle && Number(efficiency)>0 ? {name:`${selectedVehicle.manufacturer} ${selectedVehicle.model}`,fuelType,efficiency:Number(efficiency),sourceVehicleId:selectedVehicle.id}:null}
-                onSelect={v=>{setSelectedVehicle(null);setFuelType(v.fuelType);setEfficiency(String(v.efficiency));resetFuel();}}
-              />
-                </div>
-              </details>
               <VehicleSearch
                 selectedVehicle={selectedVehicle}
                 onSelect={handleVehicleSelect}
@@ -1181,12 +1170,6 @@ export default function Home() {
 
         {route && result && origin && destination && (
           <section id="calculation-result" className="mt-6 scroll-mt-4">
-            <details className="mb-4 rounded-2xl border border-slate-200 bg-white p-4">
-              <summary className="cursor-pointer text-sm font-semibold text-slate-700">자차 vs 대중교통 비용 비교 (펼치기)</summary>
-              <div className="mt-4">
-            <TransportComparison key={`${origin.id}-${destination.id}-${tripType}`} origin={origin} destination={destination} carTotal={result.totalCost} carMinutes={route.totalDurationMinutes} passengers={passengers} roundTrip={tripType==='roundtrip'}/>
-              </div>
-            </details>
             <div className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
               <div className="bg-slate-900 p-6 text-white">
                 <p className="text-sm font-medium text-slate-300">
