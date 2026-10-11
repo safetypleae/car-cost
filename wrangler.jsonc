@@ -10,6 +10,8 @@
     "binding": "ASSETS"
   },
 
+  "previews": {},
+
   "cache": {
     "enabled": true
   }
