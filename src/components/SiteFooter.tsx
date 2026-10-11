@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 const links = [
+  { href: "/expenses", label: "내 차 가계부" },
+  { href: "/statistics", label: "유지비 통계" },
   { href: "/guide", label: "이용방법" },
   { href: "/methodology", label: "계산 기준·데이터 출처" },
   { href: "/privacy", label: "개인정보처리방침" },

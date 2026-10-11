@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import MaintenanceNav from '@/components/MaintenanceNav';
+import OwnedVehiclePicker from '@/components/OwnedVehiclePicker';
+import TransportComparison from '@/components/TransportComparison';
 import SiteFooter from "@/components/SiteFooter";
 import HomeGuideContent from "@/components/HomeGuideContent";
 
@@ -789,6 +792,7 @@ export default function Home() {
             거리, 시간, 통행료와 예상 차비를 계산해드립니다.
           </p>
         </header>
+        <MaintenanceNav/>
 
         <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
           <div className="space-y-5">
@@ -876,6 +880,10 @@ export default function Home() {
                 </p>
               </div>
 
+              <OwnedVehiclePicker
+                candidate={selectedVehicle && Number(efficiency)>0 ? {name:`${selectedVehicle.manufacturer} ${selectedVehicle.model}`,fuelType,efficiency:Number(efficiency),sourceVehicleId:selectedVehicle.id}:null}
+                onSelect={v=>{setSelectedVehicle(null);setFuelType(v.fuelType);setEfficiency(String(v.efficiency));resetFuel();}}
+              />
               <VehicleSearch
                 selectedVehicle={selectedVehicle}
                 onSelect={handleVehicleSelect}
@@ -1170,6 +1178,7 @@ export default function Home() {
 
         {route && result && origin && destination && (
           <section id="calculation-result" className="mt-6 scroll-mt-4">
+            <TransportComparison key={`${origin.id}-${destination.id}-${tripType}`} origin={origin} destination={destination} carTotal={result.totalCost} carMinutes={route.totalDurationMinutes} passengers={passengers} roundTrip={tripType==='roundtrip'}/>
             <div className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
               <div className="bg-slate-900 p-6 text-white">
                 <p className="text-sm font-medium text-slate-300">

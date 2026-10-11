@@ -8,6 +8,8 @@ export const metadata: Metadata = {
 };
 
 const tools = [
+  { href: "/expenses", title: "내 차 가계부", description: "차량별 주유·정비·보험 등 지출 기록" },
+  { href: "/statistics", title: "유지비 통계", description: "월별 추이·카테고리 비중·차량별 유지비 비교" },
   { href: "/fuel-cost-calculator", title: "기름값 계산기", description: "거리·연비·유가로 예상 주유비 계산" },
   { href: "/trip-cost-calculator", title: "여행비 계산기", description: "기름값과 통행료를 합친 자동차 여행비 계산" },
   { href: "/commute-cost-calculator", title: "출퇴근 비용 계산기", description: "월·연간 자동차 출퇴근 비용 계산" },

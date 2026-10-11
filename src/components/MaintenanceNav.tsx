@@ -1,0 +1,2 @@
+import Link from 'next/link';
+export default function MaintenanceNav() {return <nav aria-label="자동차 비용 관리" className="my-5 flex flex-wrap gap-2 text-sm font-semibold">{[['/','이동비 계산'],['/garage','내 차 관리'],['/expenses','내 차 가계부'],['/statistics','유지비 통계']].map(([href,label])=><Link key={href} href={href} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-slate-700 hover:border-blue-400">{label}</Link>)}</nav>;}

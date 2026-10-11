@@ -76,6 +76,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
   ];
 
+  for (const path of ['garage','expenses','statistics']) staticPages.push({url:`https://car-cost.kr/${path}`,changeFrequency:'monthly',priority:0.7});
   const routePages: MetadataRoute.Sitemap = routeGuides.map((route) => ({
     url: `https://car-cost.kr/routes/${route.slug}`,
     lastModified: now,
