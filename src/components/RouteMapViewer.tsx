@@ -128,9 +128,18 @@ export default function RouteMapViewer({
         if (cancelled || !containerRef.current) return;
 
         const paths = [outbound.path, ...(returning ? [returning.path] : [])];
-        const coordinates = paths.flat();
-        const latitudes = coordinates.map((point) => point[1]);
-        const longitudes = coordinates.map((point) => point[0]);
+        let minLat = Infinity;
+        let maxLat = -Infinity;
+        let minLng = Infinity;
+        let maxLng = -Infinity;
+        for (const path of paths) {
+          for (const [lng, lat] of path) {
+            minLat = Math.min(minLat, lat);
+            maxLat = Math.max(maxLat, lat);
+            minLng = Math.min(minLng, lng);
+            maxLng = Math.max(maxLng, lng);
+          }
+        }
         const center = new sdk.LatLng(origin.lat, origin.lng);
         const map = new sdk.Map(containerRef.current, {
           center,
@@ -159,8 +168,8 @@ export default function RouteMapViewer({
           title: "도착지: " + destination.name,
         });
 
-        const sw = new sdk.LatLng(Math.min(...latitudes), Math.min(...longitudes));
-        const ne = new sdk.LatLng(Math.max(...latitudes), Math.max(...longitudes));
+        const sw = new sdk.LatLng(minLat, minLng);
+        const ne = new sdk.LatLng(maxLat, maxLng);
         map.fitBounds(new sdk.LatLngBounds(sw, ne));
         setStatus("ready");
       } catch (caught) {
