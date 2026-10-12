@@ -1369,6 +1369,10 @@ export default function Home() {
               origin={{ name: origin.name, lat: origin.lat, lng: origin.lng }}
               destination={{ name: destination.name, lat: destination.lat, lng: destination.lng }}
               roundTrip={tripType === "roundtrip"}
+              efficiency={Number(efficiency)}
+              fuelPrice={Number(fuelPrice)}
+              parkingFee={parkingFee}
+              passengers={passengers}
             />
           </section>
         )}
