@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import RouteMapViewer from "@/components/RouteMapViewer";
 import SiteFooter from "@/components/SiteFooter";
 import HomeGuideContent from "@/components/HomeGuideContent";
 
@@ -1363,6 +1364,12 @@ export default function Home() {
                 </div>
               </div>
             </div>
+            <RouteMapViewer
+              key={origin.id + ":" + destination.id + ":" + tripType + ":" + route.totalDistanceKm}
+              origin={{ name: origin.name, lat: origin.lat, lng: origin.lng }}
+              destination={{ name: destination.name, lat: destination.lat, lng: destination.lng }}
+              roundTrip={tripType === "roundtrip"}
+            />
           </section>
         )}
 

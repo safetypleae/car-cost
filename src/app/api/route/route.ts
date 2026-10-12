@@ -24,6 +24,7 @@ type DirectionsResponse = {
   route?: {
     traoptimal?: Array<{
       summary: DirectionsSummary;
+      path?: [number, number][];
     }>;
   };
 };
@@ -138,7 +139,9 @@ export async function GET(request: NextRequest) {
 
     const directions = await getDirections(start, goal);
 
-    const summary = directions.route?.traoptimal?.[0]?.summary;
+    const selectedRoute = directions.route?.traoptimal?.[0];
+    const summary = selectedRoute?.summary;
+    const includePath = searchParams.get("includePath") === "1";
 
     if (!summary) {
       throw new Error(
@@ -160,6 +163,12 @@ export async function GET(request: NextRequest) {
       ),
 
       tollFee: summary.tollFare,
+      // Path is opt-in: existing calculator responses, saved history and share URLs stay unchanged.
+      ...(includePath ? {
+        path: selectedRoute?.path ?? [],
+        // Client ID is a public browser key; NAVER_MAPS_CLIENT_SECRET never leaves the server.
+        mapClientId: NAVER_CLIENT_ID,
+      } : {}),
     });
   } catch (error) {
     console.error(error);
