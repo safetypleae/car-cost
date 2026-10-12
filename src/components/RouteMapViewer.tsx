@@ -308,7 +308,6 @@ export default function RouteMapViewer({
                 ref={containerRef}
                 aria-label="선택한 자동차 경로 지도"
                 className="h-72 w-full rounded-xl bg-slate-100"
-                style={{ display: mapError ? "none" : "block" }}
               />
               <p className="text-xs leading-5 text-slate-500">
                 파란색은 가는 길{roundTrip ? ", 주황색은 오는 길" : ""}입니다.
