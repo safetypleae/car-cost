@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import proj4 from "proj4";
+import { fetchCachedJson } from "@/lib/server/externalApiCache";
 
 const NAVER_CLIENT_ID = process.env.NAVER_MAPS_CLIENT_ID;
 const NAVER_CLIENT_SECRET = process.env.NAVER_MAPS_CLIENT_SECRET;
@@ -68,6 +70,90 @@ const MAX_SEARCH_POINTS = 4;
 const MAX_DIRECTION_CANDIDATES = 5;
 const SEARCH_RADIUS_METERS = 5000;
 const MAX_ROUTE_DISTANCE_KM = 4;
+const MAX_REQUEST_BYTES = 8 * 1024;
+const LOCAL_ACTOR_LIMIT = 12;
+const LOCAL_GLOBAL_LIMIT = 120;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+
+type RateLimitBinding = {
+  limit: (options: { key: string }) => Promise<{ success: boolean }>;
+};
+
+type RouteFuelCloudflareEnv = CloudflareEnv & {
+  ROUTE_FUEL_RATE_LIMITER?: RateLimitBinding;
+  ROUTE_FUEL_GLOBAL_RATE_LIMITER?: RateLimitBinding;
+};
+
+type LocalRateLimitEntry = { count: number; resetAt: number };
+const localActorLimits = new Map<string, LocalRateLimitEntry>();
+let localGlobalLimit: LocalRateLimitEntry = { count: 0, resetAt: 0 };
+
+function takeLocalToken(store: Map<string, LocalRateLimitEntry>, key: string, limit: number) {
+  const now = Date.now();
+  const current = store.get(key);
+  if (!current || current.resetAt <= now) {
+    store.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+  if (current.count >= limit) return false;
+  current.count += 1;
+  return true;
+}
+
+function takeLocalGlobalToken() {
+  const now = Date.now();
+  if (localGlobalLimit.resetAt <= now) {
+    localGlobalLimit = { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS };
+    return true;
+  }
+  if (localGlobalLimit.count >= LOCAL_GLOBAL_LIMIT) return false;
+  localGlobalLimit.count += 1;
+  return true;
+}
+
+async function rateLimitKey(request: NextRequest) {
+  const forwarded = request.headers.get("cf-connecting-ip") ||
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const userAgent = request.headers.get("user-agent")?.slice(0, 160) || "unknown";
+  const data = new TextEncoder().encode(`${forwarded}:${userAgent}`);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function allowRequest(request: NextRequest) {
+  const actorKey = await rateLimitKey(request);
+  // OpenNext exposes its request-scoped context through this symbol in Workers.
+  // Checking it first avoids starting Wrangler's development proxy under plain `next dev/start`.
+  const hasCloudflareContext = Reflect.get(globalThis, Symbol.for("__cloudflare-context__"));
+  if (hasCloudflareContext) {
+    const { env } = getCloudflareContext();
+    const bindings = env as RouteFuelCloudflareEnv;
+    if (bindings.ROUTE_FUEL_RATE_LIMITER && bindings.ROUTE_FUEL_GLOBAL_RATE_LIMITER) {
+      const [actor, global] = await Promise.all([
+        bindings.ROUTE_FUEL_RATE_LIMITER.limit({ key: actorKey }),
+        bindings.ROUTE_FUEL_GLOBAL_RATE_LIMITER.limit({ key: "route-fuel-stations" }),
+      ]);
+      return actor.success && global.success;
+    }
+  }
+  return takeLocalToken(localActorLimits, actorKey, LOCAL_ACTOR_LIMIT) && takeLocalGlobalToken();
+}
+
+function isSameOrigin(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  if (!origin) return true;
+  try {
+    return new URL(origin).host === request.nextUrl.host;
+  } catch {
+    return false;
+  }
+}
+
+function cacheIdentity(url: URL, secretParameter?: string) {
+  const safeUrl = new URL(url);
+  if (secretParameter) safeUrl.searchParams.delete(secretParameter);
+  return `${safeUrl.pathname}?${safeUrl.searchParams.toString()}`;
+}
 
 function validCoordinate(point: Coordinate | undefined): point is Coordinate {
   return Boolean(point) && Number.isFinite(point?.lat) && Number.isFinite(point?.lng) &&
@@ -122,15 +208,18 @@ async function getDirections(start: Coordinate, goal: Coordinate, waypoint?: Coo
   if (waypoint) url.searchParams.set("waypoints", `${waypoint.lng},${waypoint.lat}`);
   url.searchParams.set("option", "traoptimal");
 
-  const response = await fetch(url, {
-    headers: {
-      "x-ncp-apigw-api-key-id": NAVER_CLIENT_ID!,
-      "x-ncp-apigw-api-key": NAVER_CLIENT_SECRET!,
-    },
-    cache: "no-store",
+  const data = await fetchCachedJson<NaverResponse>({
+    namespace: "naver-directions-v1",
+    identity: cacheIdentity(url),
+    ttlSeconds: 300,
+    fetcher: () => fetch(url, {
+      headers: {
+        "x-ncp-apigw-api-key-id": NAVER_CLIENT_ID!,
+        "x-ncp-apigw-api-key": NAVER_CLIENT_SECRET!,
+      },
+      cache: "no-store",
+    }),
   });
-  if (!response.ok) throw new Error(`Directions API HTTP ${response.status}`);
-  const data = await response.json() as NaverResponse;
   const route = data.route?.traoptimal?.[0];
   const summary = route?.summary;
   if (data.code !== 0 || !summary || !Number.isFinite(summary.distance) ||
@@ -156,9 +245,12 @@ async function searchAround(point: Coordinate, fuelType: FuelType) {
   url.searchParams.set("prodcd", PRODUCT_CODES[fuelType]);
   url.searchParams.set("out", "json");
 
-  const response = await fetch(url, { next: { revalidate: 1800 } });
-  if (!response.ok) throw new Error(`Opinet API HTTP ${response.status}`);
-  const data = await response.json() as { RESULT?: { OIL?: OpinetAroundStation[] } };
+  const data = await fetchCachedJson<{ RESULT?: { OIL?: OpinetAroundStation[] } }>({
+    namespace: "opinet-around-v1",
+    identity: cacheIdentity(url, "certkey"),
+    ttlSeconds: 1800,
+    fetcher: () => fetch(url, { cache: "no-store" }),
+  });
   return data.RESULT?.OIL ?? [];
 }
 
@@ -167,14 +259,37 @@ async function getStationDetail(id: string) {
   url.searchParams.set("certkey", OPINET_API_KEY!);
   url.searchParams.set("id", id);
   url.searchParams.set("out", "json");
-  const response = await fetch(url, { next: { revalidate: 3600 } });
-  if (!response.ok) return null;
-  const data = await response.json() as { RESULT?: { OIL?: OpinetDetail[] } };
-  return data.RESULT?.OIL?.[0] ?? null;
+  try {
+    const data = await fetchCachedJson<{ RESULT?: { OIL?: OpinetDetail[] } }>({
+      namespace: "opinet-detail-v1",
+      identity: cacheIdentity(url, "certkey"),
+      ttlSeconds: 3600,
+      fetcher: () => fetch(url, { cache: "no-store" }),
+    });
+    return data.RESULT?.OIL?.[0] ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export async function POST(request: NextRequest) {
   try {
+    if (!isSameOrigin(request)) {
+      return NextResponse.json({ error: "허용되지 않은 요청 출처입니다." }, { status: 403 });
+    }
+    const contentLength = Number(request.headers.get("content-length") || "0");
+    if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BYTES) {
+      return NextResponse.json({ error: "요청 데이터가 너무 큽니다." }, { status: 413 });
+    }
+    if (!request.headers.get("content-type")?.toLowerCase().includes("application/json")) {
+      return NextResponse.json({ error: "JSON 요청만 지원합니다." }, { status: 415 });
+    }
+    if (!(await allowRequest(request))) {
+      return NextResponse.json({ error: "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." }, {
+        status: 429,
+        headers: { "Cache-Control": "private, no-store", "Retry-After": "60" },
+      });
+    }
     if (!NAVER_CLIENT_ID || !NAVER_CLIENT_SECRET || !OPINET_API_KEY) {
       return NextResponse.json({ error: "주유소 추천 서비스 인증정보가 설정되지 않았습니다." }, { status: 503 });
     }
