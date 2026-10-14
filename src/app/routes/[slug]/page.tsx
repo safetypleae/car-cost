@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { routeGuides as baseRouteGuides } from "@/data/route-guides";
 import { extraRouteGuides } from "@/data/route-guides-extra";
+import { createPageMetadata, SITE_URL } from "@/lib/seo";
 
 const routeGuides = [...baseRouteGuides, ...extraRouteGuides];
 
@@ -25,27 +26,21 @@ export async function generateMetadata({
   const route = getRouteGuide(slug);
 
   if (!route) {
-    return {};
+    return {
+      title: "페이지를 찾을 수 없습니다",
+      robots: { index: false, follow: false },
+    };
   }
 
   const title = `${route.origin} → ${route.destination} 자동차 이동비·기름값·톨비`;
   const description = `${route.origin}에서 ${route.destination}까지 자동차로 갈 때 드는 기름값과 통행료를 차비얼마에서 계산해보세요. 편도·왕복과 탑승 인원별 예상 차비를 확인할 수 있습니다.`;
 
-  return {
+  return createPageMetadata({
     title,
     description,
-    alternates: {
-      canonical: `/routes/${route.slug}`,
-    },
-    openGraph: {
-      type: "website",
-      locale: "ko_KR",
-      url: `/routes/${route.slug}`,
-      siteName: "차비얼마",
-      title: `${title} | 차비얼마`,
-      description,
-    },
-  };
+    path: `/routes/${route.slug}`,
+    index: baseRouteGuides.some((item) => item.slug === route.slug),
+  });
 }
 
 function getRelatedRoutes(currentSlug: string, origin: string, destination: string) {
@@ -149,40 +144,26 @@ export default async function RouteGuidePage({ params }: RoutePageProps) {
         "@type": "ListItem",
         position: 1,
         name: "차비얼마",
-        item: "https://car-cost.kr/",
+        item: `${SITE_URL}/`,
       },
       {
         "@type": "ListItem",
         position: 2,
         name: "주요 경로",
-        item: "https://car-cost.kr/routes",
+        item: `${SITE_URL}/routes`,
       },
       {
         "@type": "ListItem",
         position: 3,
         name: `${route.origin} → ${route.destination}`,
-        item: `https://car-cost.kr/routes/${route.slug}`,
+        item: `${SITE_URL}/routes/${route.slug}`,
       },
     ],
-  };
-
-  const faqJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: faqs.map((faq) => ({
-      "@type": "Question",
-      name: faq.question,
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: faq.answer,
-      },
-    })),
   };
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900">
       <JsonLd data={breadcrumbJsonLd} />
-      <JsonLd data={faqJsonLd} />
       <article className="mx-auto max-w-2xl">
         <nav className="mb-6 text-sm text-slate-500" aria-label="경로">
           <Link href="/" className="font-semibold text-blue-600 hover:underline">
@@ -341,7 +322,9 @@ export default async function RouteGuidePage({ params }: RoutePageProps) {
           <h2 className="text-xl font-bold">현재 조건으로 직접 계산해보세요</h2>
           <p className="mt-2 text-sm leading-6 text-slate-300">
             정확한 출발 장소와 목적지, 차량 연비, 유종, 탑승 인원을 적용해 실제
-            여행 조건에 맞는 예상 차비를 확인할 수 있습니다.
+            여행 조건에 맞는 예상 차비를 확인할 수 있습니다. 계산 후에는 경로상
+            주유소 후보를 비교하거나 출장 운행일지·경비정산서를 Excel·PDF로
+            만들 수 있습니다.
           </p>
           <Link
             href="/"

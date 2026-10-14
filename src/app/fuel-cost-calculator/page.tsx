@@ -1,17 +1,12 @@
-import type { Metadata } from "next";
 import CalculatorShell from "@/components/CalculatorShell";
 import { FuelCostCalculator } from "@/components/SimpleCalculators";
+import { createPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "거리·연비·유가로 자동차 주유비 계산",
   description: "주행거리와 차량 연비, 리터당 유가를 입력해 예상 기름값과 사용 연료량, 인원별 부담액을 계산합니다.",
-  alternates: { canonical: "/fuel-cost-calculator" },
-  openGraph: {
-    title: "거리·연비·유가로 자동차 주유비 계산 | 차비얼마",
-    description: "주행거리와 차량 연비, 리터당 유가를 입력해 예상 기름값과 사용 연료량, 인원별 부담액을 계산합니다.",
-    url: "/fuel-cost-calculator",
-  },
-};
+  path: "/fuel-cost-calculator",
+});
 
 const faqJsonLd = {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "기름값은 어떻게 계산하나요?", "acceptedAnswer": {"@type": "Answer", "text": "주행거리 ÷ 차량 연비로 예상 연료 사용량을 구한 뒤 리터당 유가를 곱합니다."}}, {"@type": "Question", "name": "왕복 기름값도 계산할 수 있나요?", "acceptedAnswer": {"@type": "Answer", "text": "왕복 옵션을 선택하면 입력한 편도 거리를 두 배로 계산합니다."}}, {"@type": "Question", "name": "실제 기름값과 차이가 날 수 있나요?", "acceptedAnswer": {"@type": "Answer", "text": "교통상황, 운전습관, 공조장치 사용, 적재량과 실제 주유 가격에 따라 차이가 날 수 있습니다."}}]};
 

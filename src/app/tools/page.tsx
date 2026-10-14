@@ -1,11 +1,11 @@
-import type { Metadata } from "next";
 import Link from "next/link";
+import { createPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "자동차 이동비 계산 도구",
   description: "기름값, 자동차 여행비, 출퇴근 비용, 카풀 차비를 간단하게 계산할 수 있는 차비얼마 무료 계산 도구 모음입니다.",
-  alternates: { canonical: "/tools" },
-};
+  path: "/tools",
+});
 
 const tools = [
   { href: "/fuel-cost-calculator", title: "기름값 계산기", description: "거리·연비·유가로 예상 주유비 계산" },

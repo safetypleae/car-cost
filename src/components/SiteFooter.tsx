@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 const links = [
+  { href: "/tools", label: "계산 도구" },
+  { href: "/routes", label: "주요 경로" },
   { href: "/guide", label: "이용방법" },
   { href: "/methodology", label: "계산 기준·데이터 출처" },
   { href: "/privacy", label: "개인정보처리방침" },

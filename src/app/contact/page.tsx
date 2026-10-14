@@ -1,13 +1,13 @@
 
-import type { Metadata } from "next";
 import InfoPage from "@/components/InfoPage";
+import { createPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "문의 | 차비얼마",
+export const metadata = createPageMetadata({
+  title: "문의",
   description:
     "차비얼마의 계산 오류, 데이터 수정, 기능 제안 및 개인정보 관련 문의 안내입니다.",
-  alternates: { canonical: "/contact" },
-};
+  path: "/contact",
+});
 
 const CONTACT_EMAIL = "ljh001029@gmail.com";
 

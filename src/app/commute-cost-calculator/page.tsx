@@ -1,17 +1,12 @@
-import type { Metadata } from "next";
 import CalculatorShell from "@/components/CalculatorShell";
 import { CommuteCostCalculator } from "@/components/SimpleCalculators";
+import { createPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "월·연간 자동차 출퇴근 비용 계산",
   description: "하루 왕복거리와 월 출근일, 차량 연비, 유가, 주차비를 입력해 월간·연간 자동차 출퇴근 비용을 계산합니다.",
-  alternates: { canonical: "/commute-cost-calculator" },
-  openGraph: {
-    title: "월·연간 자동차 출퇴근 비용 계산 | 차비얼마",
-    description: "하루 왕복거리와 월 출근일, 차량 연비, 유가, 주차비를 입력해 월간·연간 자동차 출퇴근 비용을 계산합니다.",
-    url: "/commute-cost-calculator",
-  },
-};
+  path: "/commute-cost-calculator",
+});
 
 const faqJsonLd = {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "월 출퇴근 비용은 어떻게 계산하나요?", "acceptedAnswer": {"@type": "Answer", "text": "하루 왕복거리 × 월 출근일로 월 주행거리를 구하고, 연비와 유가로 기름값을 계산한 뒤 입력한 주차비를 더합니다."}}, {"@type": "Question", "name": "연간 비용은 어떻게 계산하나요?", "acceptedAnswer": {"@type": "Answer", "text": "현재 계산기는 월 예상비용에 12개월을 곱해 연간 예상비용을 보여줍니다."}}, {"@type": "Question", "name": "보험료와 차량 감가상각도 포함되나요?", "acceptedAnswer": {"@type": "Answer", "text": "아닙니다. 현재 결과는 연료비와 입력한 주차비 중심의 이동비 추정치입니다."}}]};
 

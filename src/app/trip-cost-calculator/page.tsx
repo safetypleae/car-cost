@@ -1,17 +1,12 @@
-import type { Metadata } from "next";
 import CalculatorShell from "@/components/CalculatorShell";
 import { TripCostCalculator } from "@/components/SimpleCalculators";
+import { createPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "기름값 + 통행료 자동차 여행비 계산",
   description: "총 주행거리, 차량 연비, 유가와 통행료를 입력해 자동차 여행의 예상 이동비와 1인당 비용을 계산합니다.",
-  alternates: { canonical: "/trip-cost-calculator" },
-  openGraph: {
-    title: "기름값 + 통행료 자동차 여행비 계산 | 차비얼마",
-    description: "총 주행거리, 차량 연비, 유가와 통행료를 입력해 자동차 여행의 예상 이동비와 1인당 비용을 계산합니다.",
-    url: "/trip-cost-calculator",
-  },
-};
+  path: "/trip-cost-calculator",
+});
 
 const faqJsonLd = {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "자동차 여행비에는 무엇이 포함되나요?", "acceptedAnswer": {"@type": "Answer", "text": "이 계산기에서는 예상 기름값과 입력한 통행료를 합산합니다."}}, {"@type": "Question", "name": "주차비도 포함되나요?", "acceptedAnswer": {"@type": "Answer", "text": "이 페이지에는 주차비가 포함되지 않습니다. 주차비가 있다면 계산 결과에 별도로 더해 실제 예산을 잡는 것이 좋습니다."}}, {"@type": "Question", "name": "실제 경로의 통행료를 모르면 어떻게 하나요?", "acceptedAnswer": {"@type": "Answer", "text": "차비얼마 메인 계산기에서 실제 출발지와 목적지를 선택하면 예상 통행료까지 함께 확인할 수 있습니다."}}]};
 

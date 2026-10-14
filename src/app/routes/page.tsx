@@ -1,18 +1,13 @@
-import type { Metadata } from "next";
 import Link from "next/link";
-import { routeGuides as baseRouteGuides } from "@/data/route-guides";
-import { extraRouteGuides } from "@/data/route-guides-extra";
+import { routeGuides } from "@/data/route-guides";
+import { createPageMetadata } from "@/lib/seo";
 
-const routeGuides = [...baseRouteGuides, ...extraRouteGuides];
-
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "주요 자동차 이동비 계산 경로",
   description:
     "서울, 부산, 대구, 광주 등 주요 도시와 공항·여행 구간의 자동차 이동비 계산 가이드를 모았습니다. 원하는 경로를 선택하고 정확한 출발지와 목적지는 차비얼마 계산기에서 검색하세요.",
-  alternates: {
-    canonical: "/routes",
-  },
-};
+  path: "/routes",
+});
 
 function isAirportRoute(origin: string, destination: string) {
   return origin.includes("공항") || destination.includes("공항");
