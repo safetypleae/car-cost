@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import RouteMapViewer from "@/components/RouteMapViewer";
+import RouteFuelStationFinder from "@/components/RouteFuelStationFinder";
+import TripDocumentGenerator from "@/components/TripDocumentGenerator";
 import SiteFooter from "@/components/SiteFooter";
 import HomeGuideContent from "@/components/HomeGuideContent";
 
@@ -1373,6 +1375,26 @@ export default function Home() {
               fuelPrice={Number(fuelPrice)}
               parkingFee={parkingFee}
               passengers={passengers}
+            />
+            <RouteFuelStationFinder
+              key={`fuel:${origin.id}:${destination.id}:${tripType}:${route.totalDistanceKm}:${fuelType}`}
+              origin={{ name: origin.name, lat: origin.lat, lng: origin.lng }}
+              destination={{ name: destination.name, lat: destination.lat, lng: destination.lng }}
+              roundTrip={tripType === "roundtrip"}
+              efficiency={Number(efficiency)}
+              fuelPrice={Number(fuelPrice)}
+              fuelType={fuelType}
+            />
+            <TripDocumentGenerator
+              key={`documents:${origin.id}:${destination.id}:${tripType}:${route.totalDistanceKm}`}
+              origin={origin.name}
+              destination={destination.name}
+              tripLabel={tripType === "roundtrip" ? "왕복" : "편도"}
+              distanceKm={route.totalDistanceKm}
+              durationMinutes={route.totalDurationMinutes}
+              expectedFuelCost={result.fuelCost}
+              expectedTollFee={route.totalTollFee}
+              expectedParkingFee={parkingFee}
             />
           </section>
         )}
