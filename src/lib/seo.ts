@@ -53,7 +53,17 @@ export function createPageMetadata({
       ],
     },
     robots: index
-      ? undefined
+      ? {
+          index: true,
+          follow: true,
+          googleBot: {
+            index: true,
+            follow: true,
+            "max-image-preview": "large",
+            "max-snippet": -1,
+            "max-video-preview": -1,
+          },
+        }
       : {
           index: false,
           follow: true,
