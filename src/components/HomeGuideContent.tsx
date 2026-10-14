@@ -4,7 +4,7 @@ const faqs = [
   {
     question: "차비에는 어떤 비용이 포함되나요?",
     answer:
-      "현재 차비얼마의 예상 차비는 주행에 필요한 연료비와 경로 조회에서 확인한 통행료를 합산합니다. 주차비, 세차비, 보험료, 차량 감가상각비처럼 운행마다 바로 발생하지 않는 비용은 현재 총액에 포함하지 않습니다.",
+      "차비얼마의 예상 차비는 주행에 필요한 연료비와 경로 조회에서 확인한 통행료를 합산하며, 선택하거나 직접 입력한 주차비가 있으면 함께 반영합니다. 세차비, 보험료, 차량 감가상각비와 정비비는 포함하지 않습니다.",
   },
   {
     question: "기름값은 어떤 가격을 사용하나요?",
@@ -83,6 +83,39 @@ export default function HomeGuideContent() {
             </p>
           </div>
         </div>
+      </div>
+
+      <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <h2 className="text-xl font-bold">경로 계산 후 주유와 출장 정산까지 이어서 확인하세요</h2>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl bg-emerald-50 p-5 ring-1 ring-emerald-100">
+            <h3 className="font-bold text-slate-900">경로상 주유소 비교</h3>
+            <p className="mt-2 text-sm leading-7 text-slate-600">
+              경로 계산 결과에서 예상 주유량을 입력하면 경로 주변 주유소 후보를
+              찾고, 주유 가격뿐 아니라 경유로 늘어나는 거리·시간·연료비·통행료를
+              함께 비교해 실질 절약액을 확인할 수 있습니다.
+            </p>
+          </div>
+          <div className="rounded-2xl bg-indigo-50 p-5 ring-1 ring-indigo-100">
+            <h3 className="font-bold text-slate-900">출장 운행일지·경비정산서</h3>
+            <p className="mt-2 text-sm leading-7 text-slate-600">
+              계산한 거리와 예상 연료비·통행료·주차비를 바탕으로 출장 정보를
+              입력해 Excel 또는 PDF 파일을 브라우저에서 만들 수 있습니다. 실제
+              지급 인정 범위와 증빙 요건은 소속 회사 규정을 확인하세요.
+            </p>
+          </div>
+        </div>
+        <p className="mt-4 text-sm leading-6 text-slate-500">
+          거리만 알고 간단히 계산하려면{" "}
+          <Link href="/tools" className="font-semibold text-blue-600 hover:underline">
+            목적별 계산 도구
+          </Link>
+          를, 대표 도시 간 활용법을 찾는다면{" "}
+          <Link href="/routes" className="font-semibold text-blue-600 hover:underline">
+            주요 경로 가이드
+          </Link>
+          를 확인하세요.
+        </p>
       </div>
 
       <div className="rounded-3xl bg-blue-50 p-6 ring-1 ring-blue-100">

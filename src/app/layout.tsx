@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { SITE_URL } from "@/lib/seo";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://car-cost.kr"),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "차비얼마 | 자동차 이동비·기름값·톨비 계산기",
     template: "%s | 차비얼마",
@@ -34,33 +35,22 @@ export const metadata: Metadata = {
   creator: "차비얼마",
   publisher: "차비얼마",
   alternates: {
-    canonical: "/",
+    canonical: SITE_URL,
   },
   openGraph: {
     type: "website",
     locale: "ko_KR",
-    url: "/",
+    url: SITE_URL,
     siteName: "차비얼마",
     title: "차비얼마 | 자동차 이동비·기름값·톨비 계산기",
     description:
       "출발지와 목적지만 입력하면 실제 주행거리와 기름값, 통행료, 인원별 차비를 한 번에 계산합니다.",
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "차비얼마 | 자동차 이동비·기름값·톨비 계산기",
     description:
       "출발지와 목적지만 입력하면 실제 주행거리와 기름값, 통행료, 인원별 차비를 한 번에 계산합니다.",
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-      "max-video-preview": -1,
-    },
   },
   verification: {
     other: {

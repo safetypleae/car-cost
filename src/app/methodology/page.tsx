@@ -1,11 +1,11 @@
-import type { Metadata } from "next";
 import InfoPage from "@/components/InfoPage";
+import { createPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "계산 기준·데이터 출처 | 차비얼마",
+export const metadata = createPageMetadata({
+  title: "계산 기준·데이터 출처",
   description: "차비얼마의 거리, 소요시간, 통행료, 유가, 차량 표시연비와 자동차 이동비 계산 기준을 안내합니다.",
-  alternates: { canonical: "/methodology" },
-};
+  path: "/methodology",
+});
 
 export default function MethodologyPage() {
   return (
@@ -28,8 +28,13 @@ export default function MethodologyPage() {
       </section>
       <section>
         <h2 className="text-xl font-bold">총 이동비와 1인당 비용</h2>
-        <div className="mt-2 rounded-2xl bg-slate-100 p-4 font-mono text-sm text-slate-700">총 예상 차비 = 예상 기름값 + 통행료<br />1인당 예상 비용 = 총 예상 차비 ÷ 탑승 인원</div>
-        <p className="mt-3 text-slate-600">현재 기본 계산에는 주차비, 차량 감가상각, 보험료, 정비비 등은 포함하지 않습니다.</p>
+        <div className="mt-2 rounded-2xl bg-slate-100 p-4 font-mono text-sm text-slate-700">총 예상 차비 = 예상 기름값 + 통행료 + 적용한 주차비<br />1인당 예상 비용 = 총 예상 차비 ÷ 탑승 인원</div>
+        <p className="mt-3 text-slate-600">주차비를 제외하면 0원으로 계산하며, 목적지 주변 주차장 정보나 직접 입력한 금액을 선택한 경우에만 총액에 반영합니다. 차량 감가상각, 보험료, 정비비 등은 포함하지 않습니다.</p>
+      </section>
+      <section>
+        <h2 className="text-xl font-bold">경로상 주유소 비교와 출장 문서</h2>
+        <p className="mt-2 text-slate-600">경로상 주유소 비교는 주유 가격 차이에서 해당 주유소를 경유할 때 추가되는 예상 연료비와 통행료를 반영해 실질 절약액을 계산합니다. 후보 범위와 가격 갱신 시점에 따라 실제 최저가와 다를 수 있습니다.</p>
+        <p className="mt-2 text-slate-600">출장 운행일지와 경비정산서의 예상 항목은 계산 결과를 가져오며, 사용자가 실제 지출액을 입력하면 해당 금액을 우선 사용합니다. Excel·PDF 파일은 브라우저에서 생성되며 회사별 증빙 및 지급 기준을 대신하지 않습니다.</p>
       </section>
       <aside className="rounded-2xl bg-blue-50 p-4 text-sm leading-6 text-blue-900">차비얼마는 각 데이터 제공기관을 대신하지 않으며, 표시되는 값은 편의를 위한 예상 정보입니다. 중요한 이동·비용 결정 전에는 실제 내비게이션과 해당 기관의 최신 정보를 함께 확인해 주세요.</aside>
     </InfoPage>

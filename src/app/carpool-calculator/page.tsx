@@ -1,19 +1,13 @@
-import type { Metadata } from "next";
 import CalculatorShell from "@/components/CalculatorShell";
 import { CarpoolCalculator } from "@/components/SimpleCalculators";
+import { createPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "카풀 차비 계산기 | 기름값·톨비·주차비 N명 정산",
   description:
     "주행거리, 연비, 유가, 통행료, 주차비를 입력해 카풀 총비용과 1인당 차비를 계산합니다. 균등분담 또는 운전자 제외 정산을 선택할 수 있습니다.",
-  alternates: { canonical: "/carpool-calculator" },
-  openGraph: {
-    title: "카풀 차비 계산기 | 차비얼마",
-    description:
-      "기름값, 통행료, 주차비를 합산하고 운전자 포함 균등분담 또는 운전자 제외 방식으로 카풀 차비를 계산합니다.",
-    url: "/carpool-calculator",
-  },
-};
+  path: "/carpool-calculator",
+});
 
 const faqs = [
   {

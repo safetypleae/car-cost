@@ -1,13 +1,13 @@
 
-import type { Metadata } from "next";
 import InfoPage from "@/components/InfoPage";
+import { createPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "개인정보처리방침 | 차비얼마",
+export const metadata = createPageMetadata({
+  title: "개인정보처리방침",
   description:
     "차비얼마 웹사이트 및 모바일 앱의 개인정보 처리, 기기 내 저장정보, 외부 API 및 광고 관련 안내입니다.",
-  alternates: { canonical: "/privacy" },
-};
+  path: "/privacy",
+});
 
 export default function PrivacyPage() {
   return (

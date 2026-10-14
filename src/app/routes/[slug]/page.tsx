@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getRouteSpecificContent } from "@/data/route-content";
 import { routeGuides as baseRouteGuides } from "@/data/route-guides";
 import { extraRouteGuides } from "@/data/route-guides-extra";
+import { createPageMetadata, SITE_URL } from "@/lib/seo";
 
 const routeGuides = [...baseRouteGuides, ...extraRouteGuides];
 
@@ -25,27 +27,20 @@ export async function generateMetadata({
   const route = getRouteGuide(slug);
 
   if (!route) {
-    return {};
+    return {
+      title: "페이지를 찾을 수 없습니다",
+      robots: { index: false, follow: false },
+    };
   }
 
   const title = `${route.origin} → ${route.destination} 자동차 이동비·기름값·톨비`;
-  const description = `${route.origin}에서 ${route.destination}까지 자동차로 갈 때 드는 기름값과 통행료를 차비얼마에서 계산해보세요. 편도·왕복과 탑승 인원별 예상 차비를 확인할 수 있습니다.`;
+  const description = `${route.summary} 정확한 출발지와 차량 조건으로 예상 이동비를 계산해보세요.`;
 
-  return {
+  return createPageMetadata({
     title,
     description,
-    alternates: {
-      canonical: `/routes/${route.slug}`,
-    },
-    openGraph: {
-      type: "website",
-      locale: "ko_KR",
-      url: `/routes/${route.slug}`,
-      siteName: "차비얼마",
-      title: `${title} | 차비얼마`,
-      description,
-    },
-  };
+    path: `/routes/${route.slug}`,
+  });
 }
 
 function getRelatedRoutes(currentSlug: string, origin: string, destination: string) {
@@ -70,11 +65,10 @@ function getRelatedRoutes(currentSlug: string, origin: string, destination: stri
   return [...sameOrigin, ...connected, ...others].slice(0, 6);
 }
 
-function getRouteIntent(origin: string, destination: string) {
+function getRouteIntent(destination: string) {
   if (destination.includes("공항")) {
     return {
       eyebrow: "공항 자동차 이동비 가이드",
-      intro: `${origin}에서 ${destination}까지 자동차로 이동할 때는 연료비뿐 아니라 통행료와 왕복 여부까지 함께 확인해야 실제 부담액을 비교하기 쉽습니다.`,
       context: "공항 이동",
     };
   }
@@ -86,14 +80,12 @@ function getRouteIntent(origin: string, destination: string) {
   ) {
     return {
       eyebrow: "자동차 여행 이동비 가이드",
-      intro: `${origin}에서 ${destination}까지 자동차 여행을 계획한다면 실제 출발 장소와 도착 장소를 기준으로 거리, 기름값, 통행료를 함께 계산하는 것이 좋습니다.`,
       context: "여행",
     };
   }
 
   return {
     eyebrow: "도시 간 자동차 이동비 가이드",
-    intro: `${origin}에서 ${destination}까지 자동차로 이동할 때 드는 비용은 출발 위치, 도착 위치, 차량 연비와 선택 경로에 따라 달라집니다.`,
     context: "도시 간 이동",
   };
 }
@@ -115,13 +107,19 @@ export default async function RouteGuidePage({ params }: RoutePageProps) {
     notFound();
   }
 
+  const specificContent = getRouteSpecificContent(route.slug);
+
+  if (!specificContent) {
+    notFound();
+  }
+
   const relatedRoutes = getRelatedRoutes(
     route.slug,
     route.origin,
     route.destination,
   );
 
-  const intent = getRouteIntent(route.origin, route.destination);
+  const intent = getRouteIntent(route.destination);
 
   const faqs = [
     {
@@ -149,40 +147,26 @@ export default async function RouteGuidePage({ params }: RoutePageProps) {
         "@type": "ListItem",
         position: 1,
         name: "차비얼마",
-        item: "https://car-cost.kr/",
+        item: `${SITE_URL}/`,
       },
       {
         "@type": "ListItem",
         position: 2,
         name: "주요 경로",
-        item: "https://car-cost.kr/routes",
+        item: `${SITE_URL}/routes`,
       },
       {
         "@type": "ListItem",
         position: 3,
         name: `${route.origin} → ${route.destination}`,
-        item: `https://car-cost.kr/routes/${route.slug}`,
+        item: `${SITE_URL}/routes/${route.slug}`,
       },
     ],
-  };
-
-  const faqJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: faqs.map((faq) => ({
-      "@type": "Question",
-      name: faq.question,
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: faq.answer,
-      },
-    })),
   };
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900">
       <JsonLd data={breadcrumbJsonLd} />
-      <JsonLd data={faqJsonLd} />
       <article className="mx-auto max-w-2xl">
         <nav className="mb-6 text-sm text-slate-500" aria-label="경로">
           <Link href="/" className="font-semibold text-blue-600 hover:underline">
@@ -209,9 +193,6 @@ export default async function RouteGuidePage({ params }: RoutePageProps) {
             자동차 이동비 계산
           </h1>
           <p className="mt-4 text-sm leading-7 text-slate-600 sm:text-base">
-            {intent.intro}
-          </p>
-          <p className="mt-3 text-sm leading-7 text-slate-600 sm:text-base">
             {route.summary}
           </p>
 
@@ -237,16 +218,18 @@ export default async function RouteGuidePage({ params }: RoutePageProps) {
             {route.origin} → {route.destination} {intent.context}에서 어떤 비용을 계산하나요?
           </h2>
           <div className="mt-4 space-y-4 text-sm leading-7 text-slate-600">
-            <p>
-              차비얼마는 도로 경로를 기준으로 주행거리와 예상 소요시간을 확인하고,
-              입력한 차량 연비와 적용 유가를 이용해 예상 연료 사용량과 연료비를
-              계산합니다.
-            </p>
-            <p>
-              경로에서 확인되는 통행료를 연료비에 더해 예상 차비를 계산하며,
-              탑승 인원을 입력하면 총액을 나눈 1인당 예상 부담액도 확인할 수
-              있습니다. 왕복을 선택하면 돌아오는 경로까지 포함해 계산합니다.
-            </p>
+            <p>{specificContent.characteristics}</p>
+            <h3 className="font-bold text-slate-900">
+              이 구간에서 비용에 영향을 주는 요소
+            </h3>
+            <ul className="space-y-3">
+              {specificContent.costFactors.map((factor) => (
+                <li key={factor} className="flex gap-3">
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" />
+                  <span>{factor}</span>
+                </li>
+              ))}
+            </ul>
           </div>
 
           <div className="mt-5 rounded-2xl bg-slate-50 p-5">
@@ -275,7 +258,7 @@ export default async function RouteGuidePage({ params }: RoutePageProps) {
         <section className="mt-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
           <h2 className="text-xl font-bold">계산할 때 확인할 점</h2>
           <ul className="mt-4 space-y-3 text-sm leading-7 text-slate-600">
-            {route.tips.map((tip) => (
+            {specificContent.planningNotes.map((tip) => (
               <li key={tip} className="flex gap-3">
                 <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
                 <span>{tip}</span>
@@ -341,7 +324,9 @@ export default async function RouteGuidePage({ params }: RoutePageProps) {
           <h2 className="text-xl font-bold">현재 조건으로 직접 계산해보세요</h2>
           <p className="mt-2 text-sm leading-6 text-slate-300">
             정확한 출발 장소와 목적지, 차량 연비, 유종, 탑승 인원을 적용해 실제
-            여행 조건에 맞는 예상 차비를 확인할 수 있습니다.
+            여행 조건에 맞는 예상 차비를 확인할 수 있습니다. 계산 후에는 경로상
+            주유소 후보를 비교하거나 출장 운행일지·경비정산서를 Excel·PDF로
+            만들 수 있습니다.
           </p>
           <Link
             href="/"

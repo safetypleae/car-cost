@@ -1,56 +1,76 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { routeGuides as baseRouteGuides } from "@/data/route-guides";
 import { extraRouteGuides } from "@/data/route-guides-extra";
+import { createPageMetadata } from "@/lib/seo";
 
 const routeGuides = [...baseRouteGuides, ...extraRouteGuides];
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: "주요 자동차 이동비 계산 경로",
   description:
     "서울, 부산, 대구, 광주 등 주요 도시와 공항·여행 구간의 자동차 이동비 계산 가이드를 모았습니다. 원하는 경로를 선택하고 정확한 출발지와 목적지는 차비얼마 계산기에서 검색하세요.",
-  alternates: {
-    canonical: "/routes",
-  },
-};
+  path: "/routes",
+});
 
 function isAirportRoute(origin: string, destination: string) {
   return origin.includes("공항") || destination.includes("공항");
 }
 
 export default function RoutesPage() {
-  const seoulRoutes = routeGuides.filter((route) => route.origin === "서울");
-  const busanRoutes = routeGuides.filter((route) => route.origin === "부산");
   const airportRoutes = routeGuides.filter((route) =>
     isAirportRoute(route.origin, route.destination),
   );
-  const otherRoutes = routeGuides.filter(
+  const nonAirportRoutes = routeGuides.filter(
+    (route) => !isAirportRoute(route.origin, route.destination),
+  );
+  const seoulRoutes = nonAirportRoutes.filter((route) => route.origin === "서울");
+  const yeongnamRoutes = nonAirportRoutes.filter((route) =>
+    ["부산", "대구", "경주"].includes(route.origin),
+  );
+  const capitalAndChungcheongRoutes = nonAirportRoutes.filter((route) =>
+    ["수원", "인천", "대전", "청주"].includes(route.origin),
+  );
+  const honamRoutes = nonAirportRoutes.filter((route) =>
+    ["광주", "전주"].includes(route.origin),
+  );
+  const eastCoastRoutes = nonAirportRoutes.filter(
     (route) =>
       route.origin !== "서울" &&
-      route.origin !== "부산" &&
-      !isAirportRoute(route.origin, route.destination),
+      !["부산", "대구", "경주"].includes(route.origin) &&
+      !["수원", "인천", "대전", "청주"].includes(route.origin) &&
+      !["광주", "전주"].includes(route.origin),
   );
 
   const groups = [
-    {
-      title: "서울 출발 주요 경로",
-      description: "서울에서 전국 주요 도시와 여행지로 이동하는 자동차 경로입니다.",
-      routes: seoulRoutes,
-    },
-    {
-      title: "부산 출발 주요 경로",
-      description: "부산에서 영남권 주요 도시와 여행지로 이동하는 경로입니다.",
-      routes: busanRoutes,
-    },
     {
       title: "공항 이동 경로",
       description: "공항 픽업·샌딩이나 여행 출발 전 자동차 이동비를 확인해보세요.",
       routes: airportRoutes,
     },
     {
-      title: "지역 간 주요 이동 경로",
-      description: "지역 도시 사이의 여행·방문·업무 이동에 활용할 수 있는 경로입니다.",
-      routes: otherRoutes,
+      title: "서울 출발 주요 경로",
+      description: "서울에서 전국 주요 도시와 여행지로 이동하는 자동차 경로입니다.",
+      routes: seoulRoutes,
+    },
+    {
+      title: "부산·대구·영남권 경로",
+      description: "영남권 도시를 출발해 다른 도시와 여행지로 이동하는 경로입니다.",
+      routes: yeongnamRoutes,
+    },
+    {
+      title: "수도권·충청권 경로",
+      description: "수도권과 충청권을 출발하는 업무·방문·여행 경로입니다.",
+      routes: capitalAndChungcheongRoutes,
+    },
+    {
+      title: "광주·전주·호남권 경로",
+      description: "호남권 도시를 출발해 인접 지역과 주요 도시로 이동하는 경로입니다.",
+      routes: honamRoutes,
+    },
+    {
+      title: "강원·동해안 연계 경로",
+      description: "강원권과 동해안의 도시·여행지를 잇는 자동차 이동 경로입니다.",
+      routes: eastCoastRoutes,
     },
   ].filter((group) => group.routes.length > 0);
 
@@ -68,7 +88,7 @@ export default function RoutesPage() {
         <header className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
           <p className="text-sm font-bold text-blue-600">자동차 이동비 경로 모음</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-            주요 자동차 이동비 계산 경로
+            50개 주요 자동차 이동비 계산 경로
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
             자주 이동하는 도시·공항·여행 구간을 골라 자동차 이동비 계산 방법을
@@ -92,7 +112,10 @@ export default function RoutesPage() {
             >
               <h2 className="text-xl font-bold">{group.title}</h2>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                {group.description}
+                {group.description}{" "}
+                <span className="font-semibold">
+                  {group.routes.length}개 경로
+                </span>
               </p>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
