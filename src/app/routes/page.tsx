@@ -88,7 +88,7 @@ export default function RoutesPage() {
         <header className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
           <p className="text-sm font-bold text-blue-600">자동차 이동비 경로 모음</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-            50개 주요 자동차 이동비 계산 경로
+            {routeGuides.length}개 주요 자동차 이동비 계산 경로
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
             자주 이동하는 도시·공항·여행 구간을 골라 자동차 이동비 계산 방법을
