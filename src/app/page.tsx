@@ -205,6 +205,7 @@ const estimateParkingFee = (parking: ParkingLot, minutes: number) => {
 export default function Home() {
   const [origin, setOrigin] = useState<Place | null>(null);
   const [destination, setDestination] = useState<Place | null>(null);
+  const [routePrefill, setRoutePrefill] = useState({ from: "", to: "" });
 
   const [selectedVehicle, setSelectedVehicle] =
     useState<Vehicle | null>(null);
@@ -259,6 +260,16 @@ export default function Home() {
     try {
       const params = new URLSearchParams(window.location.search);
       const shared = params.get(SHARE_QUERY_KEY);
+
+      // Region links only prefill text. No geocoding, route, or fuel API is
+      // called until the visitor interacts with the calculator.
+      if (!shared) {
+        const from = (params.get("from") ?? "").trim().slice(0, 60);
+        const to = (params.get("to") ?? "").trim().slice(0, 60);
+        if (from.length >= 2 && to.length >= 2) {
+          setRoutePrefill({ from, to });
+        }
+      }
 
       if (shared) {
         const parsed = JSON.parse(shared) as SharedCalculation;
@@ -798,6 +809,7 @@ export default function Home() {
             <PlaceAutocomplete
               label="출발지"
               placeholder="출발지를 검색하세요"
+              initialQuery={routePrefill.from}
               selectedPlace={origin}
               onSelect={(place) => {
                 setOrigin(place);
@@ -812,6 +824,7 @@ export default function Home() {
             <PlaceAutocomplete
               label="목적지"
               placeholder="목적지를 검색하세요"
+              initialQuery={routePrefill.to}
               selectedPlace={destination}
               onSelect={(place) => {
                 setDestination(place);
@@ -1787,12 +1800,14 @@ function VehicleSearch({
 function PlaceAutocomplete({
   label,
   placeholder,
+  initialQuery = "",
   selectedPlace,
   onSelect,
   onClear,
 }: {
   label: string;
   placeholder: string;
+  initialQuery?: string;
   selectedPlace: Place | null;
   onSelect: (place: Place) => void;
   onClear: () => void;
@@ -1805,7 +1820,15 @@ function PlaceAutocomplete({
   const requestIdRef = useRef(0);
 
   useEffect(() => {
-    if (selectedPlace) {
+    if (initialQuery) {
+      setQuery(initialQuery);
+    }
+  }, [initialQuery]);
+
+  useEffect(() => {
+    // Do not spend a Places API request on a page view or search crawler.
+    // Query only when the visitor focuses this field.
+    if (!focused || selectedPlace) {
       return;
     }
 
@@ -1857,7 +1880,7 @@ function PlaceAutocomplete({
     return () => {
       window.clearTimeout(timer);
     };
-  }, [query, selectedPlace]);
+  }, [query, selectedPlace, focused]);
 
   if (selectedPlace) {
     return (
