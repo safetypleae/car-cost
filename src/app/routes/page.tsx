@@ -1,4 +1,5 @@
 import Link from "next/link";
+import RoutePairSearch from "@/components/RoutePairSearch";
 import { routeGuides as baseRouteGuides } from "@/data/route-guides";
 import { extraRouteGuides } from "@/data/route-guides-extra";
 import { createPageMetadata } from "@/lib/seo";
@@ -6,9 +7,9 @@ import { createPageMetadata } from "@/lib/seo";
 const routeGuides = [...baseRouteGuides, ...extraRouteGuides];
 
 export const metadata = createPageMetadata({
-  title: "주요 자동차 이동비 계산 경로",
+  title: "전국 지역 간 자동차 이동비·기름값·톨비 계산",
   description:
-    "서울, 부산, 대구, 광주 등 주요 도시와 공항·여행 구간의 자동차 이동비 계산 가이드를 모았습니다. 원하는 경로를 선택하고 정확한 출발지와 목적지는 차비얼마 계산기에서 검색하세요.",
+    "전국 시·군·구 어디서 어디까지든 출발지와 도착지를 입력해 자동차 이동거리, 기름값, 톨비, 왕복·1인당 차비를 계산하세요. 주요 도시 간 이동 가이드도 확인할 수 있습니다.",
   path: "/routes",
 });
 
@@ -88,13 +89,12 @@ export default function RoutesPage() {
         <header className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
           <p className="text-sm font-bold text-blue-600">자동차 이동비 경로 모음</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-            50개 주요 자동차 이동비 계산 경로
+            전국 지역 간 자동차 이동비 계산
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
-            자주 이동하는 도시·공항·여행 구간을 골라 자동차 이동비 계산 방법을
-            확인할 수 있습니다. 실제 계산에서는 도시 이름만 사용하는 대신 정확한
-            출발 장소와 목적지를 직접 검색해 현재 조건에 맞는 예상 비용을
-            확인하세요.
+            출발지와 도착지가 어디든 직접 입력할 수 있습니다. 아래에서 전국
+            시·군·구를 검색하거나 {routeGuides.length}개 주요 경로 가이드를 둘러보세요.
+            실제 거리·시간·비용은 정확한 장소를 선택한 뒤 계산합니다.
           </p>
           <Link
             href="/"
@@ -103,6 +103,8 @@ export default function RoutesPage() {
             정확한 출발지·목적지로 계산하기
           </Link>
         </header>
+
+        <RoutePairSearch />
 
         <div className="mt-6 space-y-6">
           {groups.map((group) => (
