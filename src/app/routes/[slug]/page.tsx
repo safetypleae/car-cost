@@ -90,6 +90,58 @@ function getRouteIntent(destination: string) {
   };
 }
 
+type RouteUseCase = {
+  title: string;
+  explanation: string;
+  steps: readonly string[];
+  tool: { href: string; label: string };
+  question: string;
+  answer: string;
+};
+
+function getRouteUseCase(origin: string, destination: string): RouteUseCase {
+  if (destination.includes("공항")) {
+    return {
+      title: "공항 이동: 픽업·샌딩과 장기 주차를 구분하세요",
+      explanation: "공항에 사람만 내려주고 돌아오는 경우와 차를 주차장에 두고 여행하는 경우는 필요한 비용 항목이 다릅니다.",
+      steps: [
+        `${destination}의 실제 이용 터미널이나 주차장을 도착지로 선택하세요.`,
+        "픽업·샌딩이면 귀가 경로까지 포함해 왕복 비용을 확인하세요.",
+        "차량을 공항에 두는 일정이라면 주차 기간과 주차장 요금을 별도로 확인하고 계산 결과에 반영하세요.",
+      ],
+      tool: { href: "/trip-cost-calculator", label: "여행 전체 경비 계산 도구" },
+      question: `${origin}에서 ${destination}까지 자가용으로 가면 주차비도 계산해야 하나요?`,
+      answer: "공항에 차량을 주차한다면 주차 기간과 주차장에 따른 요금이 별도로 발생할 수 있습니다. 픽업·샌딩처럼 바로 돌아오는 경우와 구분해 주차비 포함 여부를 확인하세요.",
+    };
+  }
+  if (["서울", "수원", "부산", "울산", "대전", "대구", "인천", "평택", "천안", "청주"].includes(destination) && !["인천국제공항", "김해국제공항"].includes(destination)) {
+    return {
+      title: "업무·반복 이동: 1회 비용과 월간 비용을 나눠 보세요",
+      explanation: "출장이나 반복 방문이라면 한 번의 주행비와 한 달 동안 반복되는 비용을 구분해야 실제 부담을 비교하기 쉽습니다.",
+      steps: [
+        `${origin}의 실제 출발지와 ${destination}의 사업장·방문지를 검색하세요.`,
+        "당일 복귀 일정이면 왕복을 선택하고 차량의 실제 연비를 입력하세요.",
+        "정기적으로 오간다면 1회 결과와 월 운행일수를 바탕으로 월간 비용도 비교하세요.",
+      ],
+      tool: { href: "/commute-cost-calculator", label: "월간 출퇴근 비용 계산 도구" },
+      question: `${origin}에서 ${destination}까지 매주 자동차로 이동한다면 어떻게 계산하나요?`,
+      answer: "먼저 실제 출발지·도착지와 왕복 여부를 설정해 1회 비용을 확인하세요. 이후 주간·월간 이동 횟수에 맞춰 반복 비용을 비교할 수 있습니다.",
+    };
+  }
+  return {
+    title: "여행·방문: 왕복 차비와 현지 이동비를 구분하세요",
+    explanation: "여행지까지의 왕복 차비만 계산하면 숙소·관광지 사이의 추가 주행과 주차비가 빠질 수 있습니다.",
+    steps: [
+      `${origin}에서 출발할 실제 장소와 ${destination}의 첫 방문지 또는 숙소를 선택하세요.`,
+      "돌아올 때도 같은 차를 이용한다면 왕복 옵션으로 전체 비용을 확인하세요.",
+      "여행지 내 추가 방문지의 이동비와 주차비를 별도로 고려하고 동승 인원별 부담액을 비교하세요.",
+    ],
+    tool: { href: "/carpool-calculator", label: "동승자별 차비 나누기 도구" },
+    question: `${origin}에서 ${destination}까지 여행할 때 현지 이동비도 포함되나요?`,
+    answer: "계산기에서 선택한 출발지와 목적지 사이의 경로를 기준으로 계산합니다. 여러 관광지를 방문한다면 각 구간의 추가 이동비와 주차비를 따로 확인해야 합니다.",
+  };
+}
+
 function JsonLd({ data }: { data: Record<string, unknown> }) {
   return (
     <script
@@ -120,6 +172,7 @@ export default async function RouteGuidePage({ params }: RoutePageProps) {
   );
 
   const intent = getRouteIntent(route.destination);
+  const useCase = getRouteUseCase(route.origin, route.destination);
   const calculatorHref = `/?from=${encodeURIComponent(route.origin)}&to=${encodeURIComponent(route.destination)}`;
 
   const faqs = [
@@ -137,6 +190,10 @@ export default async function RouteGuidePage({ params }: RoutePageProps) {
       question: "여러 명이 타면 1인당 차비도 알 수 있나요?",
       answer:
         "탑승 인원을 설정하면 예상 총비용을 인원수로 나눈 1인당 부담액을 함께 확인할 수 있습니다.",
+    },
+    {
+      question: useCase.question,
+      answer: useCase.answer,
     },
   ];
 
@@ -276,6 +333,22 @@ export default async function RouteGuidePage({ params }: RoutePageProps) {
         </section>
 
         <section className="mt-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
+          <h2 className="text-xl font-bold">{useCase.title}</h2>
+          <p className="mt-3 text-sm leading-7 text-slate-600">{useCase.explanation}</p>
+          <ol className="mt-4 space-y-3 text-sm leading-7 text-slate-600">
+            {useCase.steps.map((step, index) => (
+              <li key={step} className="flex gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-bold text-blue-700">{index + 1}</span>
+                <span>{step}</span>
+              </li>
+            ))}
+          </ol>
+          <Link href={useCase.tool.href} className="mt-5 inline-flex text-sm font-bold text-blue-600 hover:underline">
+            {useCase.tool.label} →
+          </Link>
+        </section>
+
+        <section className="mt-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
           <h2 className="text-xl font-bold">자주 묻는 질문</h2>
           <div className="mt-4 divide-y divide-slate-100">
             {faqs.map((faq) => (
@@ -311,7 +384,7 @@ export default async function RouteGuidePage({ params }: RoutePageProps) {
                 className="rounded-2xl border border-slate-200 p-4 transition hover:border-blue-300 hover:bg-blue-50"
               >
                 <p className="font-bold">
-                  {item.origin} → {item.destination}
+                  {item.origin}에서 {item.destination}까지 차비 계산
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
                   자동차 이동비 계산 가이드
