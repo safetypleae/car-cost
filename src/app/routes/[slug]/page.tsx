@@ -33,8 +33,8 @@ export async function generateMetadata({
     };
   }
 
-  const title = `${route.origin} → ${route.destination} 자동차 이동비·기름값·톨비`;
-  const description = `${route.summary} 정확한 출발지와 차량 조건으로 예상 이동비를 계산해보세요.`;
+  const title = `${route.origin}에서 ${route.destination}까지 자동차 기름값·톨비·이동비`;
+  const description = `${route.origin}에서 ${route.destination}까지 차로 이동할 때 필요한 기름값·통행료와 왕복·1인당 차비를 알아보세요. ${route.summary}`;
 
   return createPageMetadata({
     title,
@@ -188,9 +188,9 @@ export default async function RouteGuidePage({ params }: RoutePageProps) {
         <header className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
           <p className="text-sm font-bold text-blue-600">{intent.eyebrow}</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-            {route.origin} → {route.destination}
+            {route.origin}에서 {route.destination}까지
             <br />
-            자동차 이동비 계산
+            자동차 기름값·톨비 계산
           </h1>
           <p className="mt-4 text-sm leading-7 text-slate-600 sm:text-base">
             {route.summary}
