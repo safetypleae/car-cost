@@ -130,10 +130,10 @@ export default function RoutesPage() {
                     <div className="flex items-center justify-between gap-4">
                       <div>
                         <p className="font-bold">
-                          {route.origin} → {route.destination}
+                          {route.origin}에서 {route.destination}까지
                         </p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          기름값·톨비·인원별 차비 계산
+                        <p className="mt-1 text-xs leading-5 text-slate-500">
+                          {route.summary}
                         </p>
                       </div>
                       <span
@@ -149,6 +149,29 @@ export default function RoutesPage() {
             </section>
           ))}
         </div>
+
+        <section className="mt-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
+          <h2 className="text-xl font-bold">지역에서 지역까지 자동차 차비는 어떻게 계산하나요?</h2>
+          <p className="mt-3 text-sm leading-7 text-slate-600">
+            출발 도시와 도착 도시의 이름만으로는 정확한 이동비가 정해지지 않습니다.
+            같은 도시라도 실제 출발 주소와 도착 장소에 따라 거리와 통행료가 달라집니다.
+            차비얼마에서는 장소를 선택한 뒤 차량 연비, 유종, 편도·왕복 여부,
+            탑승 인원을 적용해 예상 비용을 확인할 수 있습니다.
+          </p>
+          <ol className="mt-4 space-y-3 text-sm leading-7 text-slate-600">
+            <li><strong className="text-slate-900">1. 출발·도착 장소:</strong> 지역명으로 검색한 뒤 실제 주소나 건물·관광지를 선택합니다.</li>
+            <li><strong className="text-slate-900">2. 거리·기름값:</strong> 선택한 경로의 주행거리와 차량 연비, 적용 유가로 연료비를 계산합니다.</li>
+            <li><strong className="text-slate-900">3. 톨비·왕복:</strong> 경로 통행료를 확인하고 필요한 경우 돌아오는 길까지 계산합니다.</li>
+            <li><strong className="text-slate-900">4. 1인당 차비:</strong> 함께 타는 인원을 설정해 예상 부담액을 비교합니다.</li>
+          </ol>
+          <p className="mt-4 text-xs leading-6 text-slate-500">
+            페이지에 표시된 경로 소개는 참고 정보이며, 실시간 거리·요금 수치는 아닙니다.
+            실제 지출액은 교통 상황, 유가, 운전 조건에 따라 달라질 수 있습니다.
+          </p>
+          <Link href="/methodology" className="mt-3 inline-flex text-sm font-bold text-blue-600 hover:underline">
+            계산 기준과 데이터 출처 확인 →
+          </Link>
+        </section>
 
         <section className="mt-6 rounded-3xl bg-slate-900 p-6 text-white sm:p-8">
           <h2 className="text-xl font-bold">목록에 없는 경로도 계산할 수 있어요</h2>
